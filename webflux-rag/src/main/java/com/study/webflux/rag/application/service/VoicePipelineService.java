@@ -95,7 +95,7 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 					VoicePipelineStage.PROMPT_BUILDING,
 					() -> Mono.fromCallable(() -> buildMessages(context, conversationContext, currentTurn.query()))
 				).flatMapMany(messages -> {
-					CompletionRequest request = CompletionRequest.withMessages(messages, "gpt-3.5-turbo", true);
+					CompletionRequest request = CompletionRequest.withMessages(messages, "gpt-4o-mini", true);
 					tracker.recordStageAttribute(VoicePipelineStage.LLM_COMPLETION, "model", request.model());
 					return tracker.traceFlux(VoicePipelineStage.LLM_COMPLETION, () -> llmPort.streamCompletion(request));
 				});
@@ -185,7 +185,7 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 
 	private String buildSystemPrompt(RetrievalContext context) {
 		if (context.isEmpty()) {
-			return "당신은 친절하고 도움이 되는 AI 어시스턴트입니다.";
+			return "자연스럽게 대화하세요. 과도한 존댓말이나 '도와드리겠습니다' 같은 틀에 박힌 표현은 피하세요.";
 		}
 
 		String contextText = context.documents().stream()
@@ -193,7 +193,7 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 			.collect(Collectors.joining("\n"));
 
 		return String.format(
-			"당신은 친절하고 도움이 되는 AI 어시스턴트입니다.\n\n다음은 참고할 수 있는 관련 문서입니다:\n%s\n\n위 문서를 참고하여 답변해주세요.",
+			"다음 정보를 참고해서 답변하세요:\n\n%s\n\n자연스럽게 대화하세요. 필요한 정보만 간결하게 답변하고, 불필요한 인사말이나 '도와드리겠습니다' 같은 표현은 생략하세요.",
 			contextText
 		);
 	}
