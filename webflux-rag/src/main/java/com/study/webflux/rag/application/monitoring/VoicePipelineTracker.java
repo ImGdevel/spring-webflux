@@ -9,7 +9,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import reactor.core.publisher.Flux;
@@ -24,6 +26,9 @@ public class VoicePipelineTracker {
 	private final Map<VoicePipelineStage, StageMetric> stageMetrics = new EnumMap<>(VoicePipelineStage.class);
 	private final Map<String, Object> attributes = new ConcurrentHashMap<>();
 	private final AtomicBoolean finished = new AtomicBoolean(false);
+	private final List<String> llmOutputs = new CopyOnWriteArrayList<>();
+	private final AtomicReference<Instant> firstResponseAt = new AtomicReference<>();
+	private final AtomicReference<Instant> lastResponseAt = new AtomicReference<>();
 	private volatile Instant finishedAt;
 
 	public VoicePipelineTracker(String inputText, PipelineMetricsReporter reporter, Clock clock) {
@@ -84,6 +89,18 @@ public class VoicePipelineTracker {
 		stageMetric(stage).incrementAttribute(key, delta);
 	}
 
+	public void recordLlmOutput(String sentence) {
+		if (sentence != null && !sentence.isBlank()) {
+			llmOutputs.add(sentence);
+		}
+	}
+
+	public void markResponseEmission() {
+		Instant now = clock.instant();
+		firstResponseAt.compareAndSet(null, now);
+		lastResponseAt.set(now);
+	}
+
 	public String pipelineId() {
 		return pipelineId;
 	}
@@ -106,10 +123,20 @@ public class VoicePipelineTracker {
 				Map.copyOf(attributes),
 				stageMetrics.values().stream()
 					.map(StageMetric::snapshot)
-					.toList()
+					.toList(),
+				List.copyOf(llmOutputs),
+				latencyFromStart(firstResponseAt.get()),
+				latencyFromStart(lastResponseAt.get())
 			);
 			reporter.report(summary);
 		}
+	}
+
+	private Long latencyFromStart(Instant instant) {
+		if (instant == null) {
+			return null;
+		}
+		return Duration.between(startedAt, instant).toMillis();
 	}
 
 	private String preview(String text) {
@@ -208,7 +235,10 @@ public class VoicePipelineTracker {
 		Instant startedAt,
 		Instant finishedAt,
 		Map<String, Object> attributes,
-		List<StageSnapshot> stages
+		List<StageSnapshot> stages,
+		List<String> llmOutputs,
+		Long firstResponseLatencyMillis,
+		Long lastResponseLatencyMillis
 	) {
 		public long durationMillis() {
 			if (startedAt == null || finishedAt == null) {

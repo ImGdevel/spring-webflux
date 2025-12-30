@@ -85,7 +85,10 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 				VoicePipelineStage.SENTENCE_ASSEMBLY,
 				() -> sentenceAssembler.assemble(llmTokens)
 			)
-			.doOnNext(sentence -> tracker.incrementStageCounter(VoicePipelineStage.SENTENCE_ASSEMBLY, "sentenceCount", 1));
+			.doOnNext(sentence -> {
+				tracker.incrementStageCounter(VoicePipelineStage.SENTENCE_ASSEMBLY, "sentenceCount", 1);
+				tracker.recordLlmOutput(sentence);
+			});
 
 		Flux<byte[]> audioStream = tracker.traceFlux(
 				VoicePipelineStage.TTS_SYNTHESIS,
@@ -93,7 +96,10 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 					.publishOn(Schedulers.boundedElastic())
 					.concatMap(sentence -> ttsPort.streamSynthesize(sentence))
 			)
-			.doOnNext(chunk -> tracker.incrementStageCounter(VoicePipelineStage.TTS_SYNTHESIS, "audioChunks", 1));
+			.doOnNext(chunk -> {
+				tracker.incrementStageCounter(VoicePipelineStage.TTS_SYNTHESIS, "audioChunks", 1);
+				tracker.markResponseEmission();
+			});
 
 		return tracker.attachLifecycle(audioStream);
 	}
