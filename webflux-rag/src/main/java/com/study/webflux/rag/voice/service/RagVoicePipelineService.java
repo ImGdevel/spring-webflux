@@ -66,13 +66,13 @@ public class RagVoicePipelineService {
 
 	private String buildAugmentedPrompt(List<RetrievalResult> results) {
 		if (results.isEmpty()) {
-			return "이전 대화 기록이 없습니다.";
+			return "사용자의 질문에 자연스럽게 대답하세요. 응답은 순수한 대화 텍스트만 포함하고, 불릿 포인트(-, *, 숫자 등)나 마크다운 형식을 사용하지 마세요.";
 		}
 
 		String context = results.stream()
-			.map(result -> "- " + result.message().query())
+			.map(result -> result.message().query())
 			.collect(Collectors.joining("\n"));
 
-		return "이전 대화 맥락:\n" + context + "\n\n";
+		return "이전 대화 맥락:\n" + context + "\n\n위 맥락을 참고하여 사용자의 질문에 자연스럽게 대답하세요. 응답은 순수한 대화 텍스트만 포함하고, 불릿 포인트(-, *, 숫자 등)나 마크다운 형식을 사용하지 마세요.";
 	}
 }
