@@ -2,11 +2,8 @@ package com.study.webflux.rag.voice.client;
 
 import java.time.Duration;
 
-import org.springframework.stereotype.Component;
-
 import reactor.core.publisher.Flux;
 
-@Component
 public class FakeLlmStreamingClient implements LlmStreamingClient {
 
 	@Override
@@ -18,7 +15,7 @@ public class FakeLlmStreamingClient implements LlmStreamingClient {
 				"지금은 RAG 음성 파이프라인을 연습하고 있습니다. ",
 				"이 문장은 LLM 이 마지막으로 보내는 문장입니다."
 			)
-			.delayElements(Duration.ofMillis(300))
+			.delayElements(Duration.ofMillis(100))
 			.startWith("프롬프트: " + base + " ");
 	}
 }

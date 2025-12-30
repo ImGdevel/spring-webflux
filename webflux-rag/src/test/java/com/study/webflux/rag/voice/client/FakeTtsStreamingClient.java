@@ -3,11 +3,8 @@ package com.study.webflux.rag.voice.client;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
-import org.springframework.stereotype.Component;
-
 import reactor.core.publisher.Flux;
 
-@Component
 public class FakeTtsStreamingClient implements TtsStreamingClient {
 
 	@Override
@@ -17,6 +14,6 @@ public class FakeTtsStreamingClient implements TtsStreamingClient {
 		return Flux.range(1, 5)
 			.map(idx -> "AUDIO-CHUNK-" + idx + " (" + safe + ")")
 			.map(chunk -> chunk.getBytes(StandardCharsets.UTF_8))
-			.delayElements(Duration.ofMillis(200));
+			.delayElements(Duration.ofMillis(50));
 	}
 }
