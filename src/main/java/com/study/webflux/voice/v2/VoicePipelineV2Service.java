@@ -1,15 +1,10 @@
 package com.study.webflux.voice.v2;
 
-import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Base64;
-import java.util.List;
 
 import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 /**
  * v2 음성 파이프라인의 핵심 오케스트레이션을 담당하는 서비스.
@@ -26,16 +21,19 @@ public class VoicePipelineV2Service {
 
 	private final LlmStreamingClient llmStreamingClient;
 	private final TtsStreamingClient ttsStreamingClient;
-	private final int configuredChunkSize;
+	private final SentenceAssemblyService sentenceAssemblyService;
+	private final AudioChunkingService audioChunkingService;
 
 	public VoicePipelineV2Service(
 		LlmStreamingClient llmStreamingClient,
 		TtsStreamingClient ttsStreamingClient,
-		VoiceV2Properties properties
+		SentenceAssemblyService sentenceAssemblyService,
+		AudioChunkingService audioChunkingService
 	) {
 		this.llmStreamingClient = llmStreamingClient;
 		this.ttsStreamingClient = ttsStreamingClient;
-		this.configuredChunkSize = Math.max(0, properties.getChunkSize());
+		this.sentenceAssemblyService = sentenceAssemblyService;
+		this.audioChunkingService = audioChunkingService;
 	}
 
 	/**
@@ -45,7 +43,10 @@ public class VoicePipelineV2Service {
 	 * @return LLM → TTS 를 거친 바이너리 오디오 청크 스트림
 	 */
 	public Flux<byte[]> runPipeline(VoiceV2Request request) {
-		return runPipeline(request, configuredChunkSize);
+		Flux<String> llmStream = llmStreamingClient.streamCompletion(request.text());
+		Flux<String> sentenceStream = sentenceAssemblyService.assemble(llmStream);
+		Flux<byte[]> rawAudioStream = sentenceStream.concatMap(ttsStreamingClient::streamAudio);
+		return audioChunkingService.chunk(rawAudioStream);
 	}
 
 	/**
@@ -57,15 +58,9 @@ public class VoicePipelineV2Service {
 	 */
 	public Flux<byte[]> runPipeline(VoiceV2Request request, int preferredChunkSize) {
 		Flux<String> llmStream = llmStreamingClient.streamCompletion(request.text());
-
-		Flux<String> sentenceStream = llmStream
-			.bufferUntil(this::isSentenceEnd)
-			.filter(list -> !list.isEmpty())
-			.map(this::joinTokensToSentence);
-
+		Flux<String> sentenceStream = sentenceAssemblyService.assemble(llmStream);
 		Flux<byte[]> rawAudioStream = sentenceStream.concatMap(ttsStreamingClient::streamAudio);
-
-		return applyChunkingIfNeeded(rawAudioStream, preferredChunkSize);
+		return audioChunkingService.chunk(rawAudioStream, preferredChunkSize);
 	}
 
 	/**
@@ -91,55 +86,4 @@ public class VoicePipelineV2Service {
 			.map(bytes -> Base64.getEncoder().encodeToString(bytes));
 	}
 
-	private boolean isSentenceEnd(String token) {
-		if (token == null || token.isEmpty()) {
-			return false;
-		}
-		String trimmed = token.trim();
-		return trimmed.endsWith(".")
-			|| trimmed.endsWith("!")
-			|| trimmed.endsWith("?")
-			|| trimmed.endsWith("다.");
-	}
-
-	private String joinTokensToSentence(List<String> tokens) {
-		return String.join("", tokens).trim();
-	}
-
-	private Flux<byte[]> applyChunkingIfNeeded(Flux<byte[]> audioFlux, int chunkSize) {
-		if (chunkSize <= 0) {
-			return audioFlux;
-		}
-
-		return Flux.defer(() -> {
-			ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-
-			Flux<byte[]> chunked = audioFlux.concatMap(chunk -> {
-				buffer.writeBytes(chunk);
-				List<byte[]> ready = new ArrayList<>();
-
-				while (buffer.size() >= chunkSize) {
-					byte[] data = buffer.toByteArray();
-					byte[] emit = Arrays.copyOf(data, chunkSize);
-					ready.add(emit);
-
-					buffer.reset();
-					if (data.length > chunkSize) {
-						buffer.write(data, chunkSize, data.length - chunkSize);
-					}
-				}
-
-				return Flux.fromIterable(ready);
-			});
-
-			return chunked.concatWith(Mono.defer(() -> {
-				if (buffer.size() > 0) {
-					byte[] remaining = buffer.toByteArray();
-					buffer.reset();
-					return Mono.just(remaining);
-				}
-				return Mono.empty();
-			}));
-		});
-	}
 }
