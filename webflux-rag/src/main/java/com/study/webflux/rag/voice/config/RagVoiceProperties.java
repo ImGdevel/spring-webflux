@@ -3,6 +3,8 @@ package com.study.webflux.rag.voice.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import com.study.webflux.rag.voice.common.VoiceConstants;
+
 @Component
 @ConfigurationProperties(prefix = "rag.voice")
 public class RagVoiceProperties {
@@ -58,10 +60,11 @@ public class RagVoiceProperties {
 
 	public static class Supertone {
 		private String apiKey;
-		private String baseUrl = "https://supertoneapi.com/v1";
-		private String voiceId = "default";
-		private String language = "ko";
-		private String outputFormat = "wav";
+		private String baseUrl = VoiceConstants.Supertone.BASE_URL;
+		private String voiceId = VoiceConstants.Supertone.Voice.ADAM_ID;
+		private String language = VoiceConstants.Supertone.Language.KOREAN;
+		private String style = VoiceConstants.Supertone.Style.NEUTRAL;
+		private String outputFormat = VoiceConstants.Supertone.OutputFormat.WAV;
 
 		public String getApiKey() {
 			return apiKey;
@@ -93,6 +96,14 @@ public class RagVoiceProperties {
 
 		public void setLanguage(String language) {
 			this.language = language;
+		}
+
+		public String getStyle() {
+			return style;
+		}
+
+		public void setStyle(String style) {
+			this.style = style;
 		}
 
 		public String getOutputFormat() {

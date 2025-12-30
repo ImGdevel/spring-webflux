@@ -19,7 +19,8 @@ rag:
       model: gpt-3.5-turbo
     supertone:
       api-key: ${SUPERTONE_API_KEY:}
-      base-url: https://supertoneapi.com/v1
-      voice-id: default
+      base-url: https://supertoneapi.com
+      voice-id: ${SUPERTONE_VOICE_ID:91992bbd4758bdcf9c9b01}
       language: ko
+      style: neutral
       output-format: wav

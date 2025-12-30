@@ -7,6 +7,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.study.webflux.rag.voice.common.VoiceConstants;
 import com.study.webflux.rag.voice.config.RagVoiceProperties;
 
 import reactor.core.publisher.Mono;
@@ -33,7 +34,8 @@ public class SupertoneTtsClient implements TtsClient {
 		var payload = Map.of(
 			"text", sentence,
 			"language", properties.getSupertone().getLanguage(),
-			"model", "sona_speech_1"
+			"style", properties.getSupertone().getStyle(),
+			"model", VoiceConstants.Supertone.MODEL
 		);
 
 		return webClient.post()
@@ -63,8 +65,8 @@ public class SupertoneTtsClient implements TtsClient {
 
 	private MediaType getAcceptMediaType() {
 		return switch (properties.getSupertone().getOutputFormat()) {
-			case "mp3" -> MediaType.parseMediaType("audio/mpeg");
-			case "wav" -> MediaType.parseMediaType("audio/wav");
+			case VoiceConstants.Supertone.OutputFormat.MP3 -> MediaType.parseMediaType("audio/mpeg");
+			case VoiceConstants.Supertone.OutputFormat.WAV -> MediaType.parseMediaType("audio/wav");
 			default -> MediaType.APPLICATION_OCTET_STREAM;
 		};
 	}

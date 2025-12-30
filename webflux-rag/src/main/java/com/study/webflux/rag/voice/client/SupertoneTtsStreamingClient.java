@@ -12,6 +12,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.study.webflux.rag.voice.common.VoiceConstants;
 import com.study.webflux.rag.voice.config.RagVoiceProperties;
 
 import reactor.core.publisher.Flux;
@@ -41,6 +42,7 @@ public class SupertoneTtsStreamingClient implements TtsStreamingClient {
 		var payload = Map.of(
 			"text", sentence,
 			"language", properties.getSupertone().getLanguage(),
+			"style", properties.getSupertone().getStyle(),
 			"output_format", properties.getSupertone().getOutputFormat(),
 			"include_phonemes", false
 		);
@@ -62,8 +64,8 @@ public class SupertoneTtsStreamingClient implements TtsStreamingClient {
 
 	private MediaType getAcceptMediaType() {
 		return switch (properties.getSupertone().getOutputFormat()) {
-			case "mp3" -> MediaType.parseMediaType("audio/mpeg");
-			case "wav" -> MediaType.parseMediaType("audio/wav");
+			case VoiceConstants.Supertone.OutputFormat.MP3 -> MediaType.parseMediaType("audio/mpeg");
+			case VoiceConstants.Supertone.OutputFormat.WAV -> MediaType.parseMediaType("audio/wav");
 			default -> MediaType.APPLICATION_OCTET_STREAM;
 		};
 	}
