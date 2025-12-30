@@ -1,5 +1,7 @@
 package com.study.webflux.voice;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
@@ -14,6 +16,8 @@ import reactor.core.publisher.Mono;
 @Component
 public class TtsWebSocketHandler implements WebSocketHandler {
 
+	private static final Logger log = LoggerFactory.getLogger(TtsWebSocketHandler.class);
+
 	private final FakeLlmService llmService;
 	private final FakeTtsService ttsService;
 
@@ -24,13 +28,14 @@ public class TtsWebSocketHandler implements WebSocketHandler {
 
 	@Override
 	public Mono<Void> handle(WebSocketSession session) {
-		Flux<WebSocketMessage> out = session.receive()
+		return session.receive()
 			.map(WebSocketMessage::getPayloadAsText)
-			.flatMap(text -> llmService.composeResponse(text)
-				.flatMapMany(ttsService::synthesizeFullText)
-				.map(chunk -> session.textMessage(chunk))
-			);
-
-		return session.send(out);
+			.next()
+			.flatMapMany(text -> llmService.composeResponse(text)
+				.doOnNext(sentence -> log.info("LLM sentence over WebSocket: {}", sentence))
+				.flatMapMany(ttsService::synthesizeFullText))
+			.map(session::textMessage)
+			.as(session::send)
+			.then(session.close());
 	}
 }
