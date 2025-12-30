@@ -1,4 +1,4 @@
-package com.study.webflux.voice;
+package com.study.webflux.voice.v1;
 
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
