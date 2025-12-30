@@ -1,0 +1,31 @@
+package com.study.webflux.rag.voice.controller;
+
+import org.springframework.http.MediaType;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.study.webflux.rag.voice.model.RagVoiceRequest;
+import com.study.webflux.rag.voice.service.RagVoicePipelineService;
+
+import jakarta.validation.Valid;
+import reactor.core.publisher.Flux;
+
+@Validated
+@RestController
+@RequestMapping("/rag/voice")
+public class RagVoiceController {
+
+	private final RagVoicePipelineService pipelineService;
+
+	public RagVoiceController(RagVoicePipelineService pipelineService) {
+		this.pipelineService = pipelineService;
+	}
+
+	@PostMapping(path = "/sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+	public Flux<String> ragVoiceStream(@Valid @RequestBody RagVoiceRequest request) {
+		return pipelineService.runPipeline(request);
+	}
+}
