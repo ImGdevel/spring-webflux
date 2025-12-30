@@ -4,6 +4,14 @@ server:
 spring:
   application:
     name: webflux
+  main:
+    web-application-type: reactive
+  webflux:
+    base-path: /api
+  codec:
+    max-in-memory-size: 5MB
 
-
+logging:
+  level:
+    org.springframework.web: info
 
