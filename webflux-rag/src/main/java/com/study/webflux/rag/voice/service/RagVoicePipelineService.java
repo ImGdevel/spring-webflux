@@ -53,6 +53,17 @@ public class RagVoicePipelineService {
 			.map(bytes -> Base64.getEncoder().encodeToString(bytes));
 	}
 
+	public Flux<byte[]> runPipelineAudio(RagVoiceRequest request) {
+		return repository.saveQuery(request.text())
+			.flatMap(saved -> retrievalService.retrieve(request.text(), 3))
+			.map(this::buildAugmentedPrompt)
+			.flatMapMany(prompt -> llmClient.streamCompletion(prompt))
+			.subscribeOn(BLOCKING_SCHEDULER)
+			.transform(sentenceAssembly::assemble)
+			.publishOn(BLOCKING_SCHEDULER)
+			.concatMap(ttsClient::streamAudio);
+	}
+
 	private String buildAugmentedPrompt(List<RetrievalResult> results) {
 		if (results.isEmpty()) {
 			return "이전 대화 기록이 없습니다.";

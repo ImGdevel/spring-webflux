@@ -1,5 +1,8 @@
 package com.study.webflux.rag.voice.controller;
 
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferFactory;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,5 +30,12 @@ public class RagVoiceController {
 	@PostMapping(path = "/sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
 	public Flux<String> ragVoiceStream(@Valid @RequestBody RagVoiceRequest request) {
 		return pipelineService.runPipeline(request);
+	}
+
+	@PostMapping(path = "/audio", produces = "audio/wav")
+	public Flux<DataBuffer> ragVoiceAudio(@Valid @RequestBody RagVoiceRequest request) {
+		DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
+		return pipelineService.runPipelineAudio(request)
+			.map(bufferFactory::wrap);
 	}
 }

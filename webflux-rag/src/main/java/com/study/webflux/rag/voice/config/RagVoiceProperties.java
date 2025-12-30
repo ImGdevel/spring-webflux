@@ -65,6 +65,7 @@ public class RagVoiceProperties {
 		private String language = VoiceConstants.Supertone.Language.KOREAN;
 		private String style = VoiceConstants.Supertone.Style.NEUTRAL;
 		private String outputFormat = VoiceConstants.Supertone.OutputFormat.WAV;
+		private VoiceSettings voiceSettings = new VoiceSettings();
 
 		public String getApiKey() {
 			return apiKey;
@@ -112,6 +113,44 @@ public class RagVoiceProperties {
 
 		public void setOutputFormat(String outputFormat) {
 			this.outputFormat = outputFormat;
+		}
+
+		public VoiceSettings getVoiceSettings() {
+			return voiceSettings;
+		}
+
+		public void setVoiceSettings(VoiceSettings voiceSettings) {
+			this.voiceSettings = voiceSettings;
+		}
+
+		public static class VoiceSettings {
+			private int pitchShift = 0;
+			private double pitchVariance = 1.0;
+			private double speed = 1.1;
+
+			public int getPitchShift() {
+				return pitchShift;
+			}
+
+			public void setPitchShift(int pitchShift) {
+				this.pitchShift = pitchShift;
+			}
+
+			public double getPitchVariance() {
+				return pitchVariance;
+			}
+
+			public void setPitchVariance(double pitchVariance) {
+				this.pitchVariance = pitchVariance;
+			}
+
+			public double getSpeed() {
+				return speed;
+			}
+
+			public void setSpeed(double speed) {
+				this.speed = speed;
+			}
 		}
 	}
 }

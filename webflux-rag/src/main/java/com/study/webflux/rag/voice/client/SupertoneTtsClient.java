@@ -1,5 +1,6 @@
 package com.study.webflux.rag.voice.client;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.core.io.buffer.DataBufferUtils;
@@ -31,12 +32,19 @@ public class SupertoneTtsClient implements TtsClient {
 
 	@Override
 	public Mono<byte[]> synthesize(String sentence) {
-		var payload = Map.of(
-			"text", sentence,
-			"language", properties.getSupertone().getLanguage(),
-			"style", properties.getSupertone().getStyle(),
-			"model", VoiceConstants.Supertone.MODEL
+		var settings = properties.getSupertone().getVoiceSettings();
+		var voiceSettings = Map.of(
+			"pitch_shift", settings.getPitchShift(),
+			"pitch_variance", settings.getPitchVariance(),
+			"speed", settings.getSpeed()
 		);
+
+		var payload = new HashMap<String, Object>();
+		payload.put("text", sentence);
+		payload.put("language", properties.getSupertone().getLanguage());
+		payload.put("style", properties.getSupertone().getStyle());
+		payload.put("model", VoiceConstants.Supertone.MODEL);
+		payload.put("voice_settings", voiceSettings);
 
 		return webClient.post()
 			.uri(uriBuilder -> uriBuilder
