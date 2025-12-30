@@ -31,10 +31,10 @@ public class BackpressureScenarioSamples {
 		Duration processingDelay
 	) {
 		if (maxValue <= 0) {
-			throw new IllegalArgumentException("maxValue must be positive");
+			throw new IllegalArgumentException("최대 값은 양수여야 합니다.");
 		}
 		if (initialBatchSize <= 0 || maxBatchSize < initialBatchSize) {
-			throw new IllegalArgumentException("Batch sizes must be positive and max >= initial");
+			throw new IllegalArgumentException("배치 크기는 양수이며 최대 배치 크기보다 작거나 같아야 합니다.");
 		}
 
 		List<Integer> consumedValues = new CopyOnWriteArrayList<>();
@@ -42,6 +42,7 @@ public class BackpressureScenarioSamples {
 		List<Integer> batchHistory = new CopyOnWriteArrayList<>();
 		CountDownLatch latch = new CountDownLatch(1);
 
+		// 소스가 빠르게 값을 만들어도 hide/doOnRequest 로 요청 신호를 그대로 관찰한다.
 		Flux<Integer> source = Flux.range(1, maxValue)
 			.hide()
 			.doOnRequest(requestSignals::add);
@@ -52,6 +53,7 @@ public class BackpressureScenarioSamples {
 
 			@Override
 			protected void hookOnSubscribe(Subscription subscription) {
+				// 첫 요청에서는 초기 배치 크기만큼 요청한다.
 				batchHistory.add(currentBatch);
 				request(currentBatch);
 			}
@@ -62,6 +64,7 @@ public class BackpressureScenarioSamples {
 				delayIfNecessary(processingDelay);
 
 				if (--remainingInBatch == 0) {
+					// 배치를 모두 처리했으니 현재 숫자에 따라 배치 크기를 늘리거나 줄인다.
 					adjustBatchSize(value);
 					batchHistory.add(currentBatch);
 					remainingInBatch = currentBatch;
@@ -100,7 +103,7 @@ public class BackpressureScenarioSamples {
 	 */
 	public OverflowStrategyResult runOverflowStrategyScenario(int elements, Duration consumerDelay) {
 		if (elements <= 0) {
-			throw new IllegalArgumentException("elements must be positive");
+			throw new IllegalArgumentException("요소 개수는 양수여야 합니다.");
 		}
 
 		Duration safeDelay = consumerDelay == null ? Duration.ZERO : consumerDelay;
@@ -125,10 +128,10 @@ public class BackpressureScenarioSamples {
 		Duration producerDelay
 	) {
 		if (elements <= 0) {
-			throw new IllegalArgumentException("elements must be positive");
+			throw new IllegalArgumentException("요소 개수는 양수여야 합니다.");
 		}
 		if (bufferSize <= 0) {
-			throw new IllegalArgumentException("bufferSize must be positive");
+			throw new IllegalArgumentException("버퍼 크기는 양수여야 합니다.");
 		}
 
 		List<List<Integer>> flushedBatches = new CopyOnWriteArrayList<>();
@@ -200,11 +203,11 @@ public class BackpressureScenarioSamples {
 	private void await(CountDownLatch latch, Duration timeout) {
 		try {
 			if (!latch.await(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
-				throw new IllegalStateException("Scenario did not finish within timeout");
+				throw new IllegalStateException("시나리오가 제한 시간 안에 끝나지 않았습니다.");
 			}
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			throw new IllegalStateException("Interrupted while waiting for scenario to finish", e);
+			throw new IllegalStateException("시나리오 완료를 기다리는 중 인터럽트가 발생했습니다.", e);
 		}
 	}
 
