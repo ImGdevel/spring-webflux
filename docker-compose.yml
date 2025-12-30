@@ -1,0 +1,31 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: webflux-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: ragdb
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - webflux-network
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: webflux-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - webflux-network
+
+volumes:
+  mongodb-data:
+  redis-data:
+
+networks:
+  webflux-network:
+    driver: bridge
