@@ -14,6 +14,11 @@ import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAd
 
 /**
  * TTS 데모용 WebSocket 엔드포인트 구성을 담당하는 설정 클래스.
+ *
+ * <p>
+ * - `/ws/voice/tts` 경로(및 필요시 basePath 가 붙은 경로)에 {@link TtsWebSocketHandler} 를 매핑한다. <br>
+ * - WebFlux 에서 WebSocket 핸들러를 구동하기 위한 {@link WebSocketHandlerAdapter} 빈을 등록한다.
+ * </p>
  */
 @Configuration
 public class TtsWebSocketConfig {

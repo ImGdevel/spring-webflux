@@ -4,8 +4,6 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,10 +14,16 @@ import com.study.webflux.trace.TraceIdFilter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-@Slf4j
 /**
- * TraceId 기반 log와 Reactor Context를 함께 사용해서 시간/카운터 스트림을 제공하는 WebFlux 예제 컨트롤러.
+ * {@link TraceIdFilter} 가 넣어준 traceId 를 Reactor Context 로 꺼내면서
+ * 시간/카운터를 SSE 스트림으로 제공하는 WebFlux 예제 컨트롤러.
+ *
+ * <p>
+ * - {@link #timeStream()}: 현재 시각 문자열을 1초 간격으로 스트리밍. <br>
+ * - {@link #counterStream()}: 0부터 시작하는 숫자 카운터를 1초 간격으로 스트리밍.
+ * </p>
  */
+@Slf4j
 @RestController
 @RequestMapping("/time")
 public class TimeController {
