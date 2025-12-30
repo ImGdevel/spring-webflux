@@ -136,23 +136,47 @@ BUILD SUCCESSFUL
 
 ---
 
-## 🎯 Phase 7: 기존 코드 모듈 분리 전략
+## ✅ Phase 7: 레거시 코드 모듈 분리 (완료)
 
-기존 `voice/` 패키지의 코드는 **삭제하지 않고** 독립적인 구현 예제로 유지합니다.
+기존 `voice/` 패키지를 **완전히 새로운 Gradle 모듈로 분리**했습니다.
 
-**유지할 파일들 (레거시 구현):**
-- `voice/client/` - 기존 클라이언트 인터페이스
-- `voice/service/RagVoicePipelineService.java` - 기존 파이프라인 서비스
-- `voice/service/FakeRagRetrievalService.java` - Mock Retrieval 서비스
-- `voice/common/VoiceConstants.java` - 상수 정의
-- `voice/model/ConversationMessage.java` - 기존 모델
-- `voice/model/RetrievalResult.java` - 기존 Retrieval 모델
+### 새로운 모듈: `webflux-voice-legacy`
 
-**분리 방식:**
-- 기존 `voice/` 패키지를 별도 예제 모듈로 취급
-- 새로운 Clean Architecture 구현과 병존
-- 학습/비교 목적으로 보존
-- Controller는 새로운 구현을 사용 (이미 전환 완료)
+**위치**: `/webflux-voice-legacy/`
+
+**패키지 구조:**
+```
+com.study.webflux.voice/  (rag 네임스페이스 제거)
+├── controller/           # RagVoiceController (기존 방식)
+├── service/             # RagVoicePipelineService
+├── client/              # LLM/TTS 클라이언트
+├── model/               # ConversationMessage, RetrievalResult, RagVoiceRequest
+├── repository/          # ConversationHistoryRepository
+├── config/              # RagVoiceProperties, RedisConfig, WebConfig
+└── common/              # VoiceConstants
+```
+
+**실행 설정:**
+- 포트: 8082 (webflux-rag는 8081)
+- 독립 실행: `./gradlew :webflux-voice-legacy:bootRun`
+- 메인 클래스: `VoiceLegacyApplication.java`
+
+**분리 작업:**
+1. ✅ 새 Gradle 모듈 생성
+2. ✅ voice/ 패키지 전체 이동
+3. ✅ 패키지 네임스페이스 변경 (`com.study.webflux.rag.voice` → `com.study.webflux.voice`)
+4. ✅ 독립 Application 클래스 생성
+5. ✅ 독립 설정 파일 생성
+6. ✅ webflux-rag에서 voice/ 삭제
+7. ✅ 필요한 공통 클래스 복사 (RagVoiceRequest, RagVoiceProperties, VoiceConstants)
+8. ✅ 빌드 검증 완료
+
+**목적:**
+- 학습/비교: Clean Architecture vs 기존 구조
+- 참조: 필요 시 기존 구현 참조
+- 독립 실행: 레거시 버전 단독 테스트
+
+**참고**: `webflux-voice-legacy/README.md`
 
 ---
 
@@ -263,9 +287,9 @@ void testOpenAiLlmAdapter() {
 ---
 
 **작성일**: 2025-12-08
-**최종 업데이트**: 2025-12-08 (Phase 6 완료)
-**빌드 상태**: ✅ SUCCESS
-**총 생성 파일**: 41개 (Phase 1-5)
+**최종 업데이트**: 2025-12-08 (Phase 7 완료 - 모듈 분리)
+**빌드 상태**: ✅ SUCCESS (모든 모듈)
+**총 생성 파일**: 41개 (Phase 1-5) + 1개 README (Phase 7)
 **총 수정 파일**: 1개 (Phase 6)
 **리팩토링 완료**: ✅ Clean Architecture 전환 완료
-**레거시 코드**: 학습/비교 목적으로 유지
+**레거시 코드**: ✅ 독립 모듈로 분리 완료 (`webflux-voice-legacy`)
