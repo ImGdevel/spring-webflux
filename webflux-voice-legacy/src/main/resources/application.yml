@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: webflux-voice-legacy
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+server:
+  port: 8082
+
+rag:
+  voice:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: https://api.openai.com/v1
+      model: gpt-3.5-turbo
+    supertone:
+      api-key: ${SUPERTONE_API_KEY:}
+      base-url: https://supertoneapi.com
+      voice-id: 2c5f135cb33f49a2c8882d
+      language: ko
+      style: neutral
+      output-format: ${SUPERTONE_OUTPUT_FORMAT:mp3}
+      voice-settings:
+        pitch-shift: 0
+        pitch-variance: 1.0
+        speed: 1.1

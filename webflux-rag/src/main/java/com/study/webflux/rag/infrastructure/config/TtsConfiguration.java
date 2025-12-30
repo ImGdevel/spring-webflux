@@ -8,7 +8,7 @@ import com.study.webflux.rag.domain.model.voice.Voice;
 import com.study.webflux.rag.domain.port.out.TtsPort;
 import com.study.webflux.rag.infrastructure.adapter.tts.SupertoneConfig;
 import com.study.webflux.rag.infrastructure.adapter.tts.SupertoneTtsAdapter;
-import com.study.webflux.rag.voice.config.RagVoiceProperties;
+import com.study.webflux.rag.infrastructure.config.properties.RagVoiceProperties;
 
 @Configuration
 public class TtsConfiguration {

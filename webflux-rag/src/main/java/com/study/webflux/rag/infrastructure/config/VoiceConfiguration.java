@@ -7,7 +7,7 @@ import com.study.webflux.rag.domain.model.voice.AudioFormat;
 import com.study.webflux.rag.domain.model.voice.Voice;
 import com.study.webflux.rag.domain.model.voice.VoiceSettings;
 import com.study.webflux.rag.domain.model.voice.VoiceStyle;
-import com.study.webflux.rag.voice.config.RagVoiceProperties;
+import com.study.webflux.rag.infrastructure.config.properties.RagVoiceProperties;
 
 @Configuration
 public class VoiceConfiguration {

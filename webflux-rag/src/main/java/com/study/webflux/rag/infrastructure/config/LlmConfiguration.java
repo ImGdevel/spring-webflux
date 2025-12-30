@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.study.webflux.rag.domain.port.out.LlmPort;
 import com.study.webflux.rag.infrastructure.adapter.llm.OpenAiConfig;
 import com.study.webflux.rag.infrastructure.adapter.llm.OpenAiLlmAdapter;
-import com.study.webflux.rag.voice.config.RagVoiceProperties;
+import com.study.webflux.rag.infrastructure.config.properties.RagVoiceProperties;
 
 @Configuration
 public class LlmConfiguration {
