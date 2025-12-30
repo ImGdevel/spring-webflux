@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: webflux-rag
+
+server:
+  port: 8081

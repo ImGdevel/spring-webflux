@@ -1,1 +1,4 @@
 rootProject.name = 'webflux'
+
+include 'webflux-core'
+include 'webflux-rag'

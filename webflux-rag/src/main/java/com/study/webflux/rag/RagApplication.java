@@ -1,12 +1,13 @@
-package com.study.webflux;
+package com.study.webflux.rag;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+
 @SpringBootApplication
-public class WebfluxApplication {
+public class RagApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(WebfluxApplication.class, args);
+		SpringApplication.run(RagApplication.class, args);
 	}
 
 }
