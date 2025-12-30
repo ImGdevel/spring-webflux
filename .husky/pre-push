@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+echo "Husky pre-push 훅이 실행됩니다."
+
+echo "✅ pre-push"
+exit 0

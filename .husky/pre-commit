@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+echo "Husky pre-commit 훅이 실행됩니다."
+echo "현재 pre-commit 훅에서는 추가 검사를 수행하지 않습니다."

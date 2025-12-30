@@ -1,0 +1,58 @@
+#!/usr/bin/env sh
+
+COMMIT_MESSAGE_FILE_PATH=$1
+first_line=$(head -n1 "$COMMIT_MESSAGE_FILE_PATH")
+remaining_lines=$(tail -n +2 "$COMMIT_MESSAGE_FILE_PATH")
+
+# 이미 이모지+타입 형식으로 저장된 커밋(예: amend)이면 건너뜁니다.
+case "$first_line" in
+  "✨ feat"*"")   exit 0 ;;
+  "🐛 fix"*"")    exit 0 ;;
+  "⚡ perf"*"")   exit 0 ;;
+  "♻️ refactor"*"") exit 0 ;;
+  "🧪 test"*"")   exit 0 ;;
+  "📝 docs"*"")   exit 0 ;;
+  "🎨 style"*"")  exit 0 ;;
+  "🔧 chore"*"")  exit 0 ;;
+  "🚀 delopy"*"") exit 0 ;;
+  "⏪ revert"*"") exit 0 ;;
+esac
+
+# Git이 자동 생성하는 메시지는 예외 처리
+case "$first_line" in
+  Merge*|Revert*|Amend*|Reset*|Rebase*|Tag*)
+    exit 0
+    ;;
+esac
+
+type=$(echo "$first_line" | grep -o "^[A-Za-z]*")
+normalized_type=$(echo "$type" | tr 'A-Z' 'a-z')
+
+emoji=""
+case "$normalized_type" in
+  feat)    emoji="✨" ;;
+  fix)     emoji="🐛" ;;
+  perf)    emoji="⚡" ;;
+  refactor) emoji="♻️" ;;
+  test)    emoji="🧪" ;;
+  docs)    emoji="📝" ;;
+  style)   emoji="🎨" ;;
+  chore)   emoji="🔧" ;;
+  delopy)  emoji="🚀" ;;
+  revert)  emoji="⏪" ;;
+esac
+
+# 유효하지 않은 타입이면 커밋을 막고 가이드를 출력
+if [ -z "$emoji" ] || [ -z "$normalized_type" ]; then
+  echo "⛔ 올바르지 않은 커밋 타입입니다."
+  echo "   사용 가능한 타입:"
+  echo "     feat, fix, perf, refactor, test, docs, style, chore, delopy, revert"
+  echo "   예) feat: 기능 추가 설명"
+  exit 1
+fi
+
+# 첫 번째 단어를 '이모지 + 타입(소문자)' 로 변환
+first_line=$(echo "$first_line" | sed "s/^$type/$emoji $normalized_type/")
+
+echo "$first_line" > "$COMMIT_MESSAGE_FILE_PATH"
+echo "$remaining_lines" >> "$COMMIT_MESSAGE_FILE_PATH"
