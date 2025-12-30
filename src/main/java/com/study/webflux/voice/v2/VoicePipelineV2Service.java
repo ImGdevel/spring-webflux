@@ -50,20 +50,6 @@ public class VoicePipelineV2Service {
 	}
 
 	/**
-	 * chunk 크기를 조절할 수 있는 파이프라인 실행.
-	 *
-	 * @param request 클라이언트 요청 DTO
-	 * @param preferredChunkSize 바이트 단위 chunk 크기 (0 이하이면 chunking 생략)
-	 * @return 오디오 청크 스트림
-	 */
-	public Flux<byte[]> runPipeline(VoiceV2Request request, int preferredChunkSize) {
-		Flux<String> llmStream = llmStreamingClient.streamCompletion(request.text());
-		Flux<String> sentenceStream = sentenceAssemblyService.assemble(llmStream);
-		Flux<byte[]> rawAudioStream = sentenceStream.concatMap(ttsStreamingClient::streamAudio);
-		return audioChunkingService.chunk(rawAudioStream, preferredChunkSize);
-	}
-
-	/**
 	 * Base64 문자열 스트림으로 변환한 파이프라인 실행.
 	 *
 	 * @param request 클라이언트 요청 DTO
@@ -71,18 +57,6 @@ public class VoicePipelineV2Service {
 	 */
 	public Flux<String> runPipelineBase64(VoiceV2Request request) {
 		return runPipeline(request)
-			.map(bytes -> Base64.getEncoder().encodeToString(bytes));
-	}
-
-	/**
-	 * 테스트나 특수 케이스에서 chunkSize 를 오버라이드하고 싶을 때 사용할 수 있는 변형.
-	 *
-	 * @param request 클라이언트 요청 DTO
-	 * @param chunkSize 오버라이드할 청크 크기
-	 * @return Base64 문자열 스트림
-	 */
-	public Flux<String> runPipelineBase64(VoiceV2Request request, int chunkSize) {
-		return runPipeline(request, chunkSize)
 			.map(bytes -> Base64.getEncoder().encodeToString(bytes));
 	}
 
