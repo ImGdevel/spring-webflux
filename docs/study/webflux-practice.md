@@ -118,7 +118,46 @@
 
 ---
 
-## 8. 마무리
+## 8. 예제 6 – 외부 API 호출(WebClient)
+
+**목표**: `WebClient` 를 사용해 외부 서비스를 비동기적으로 호출하고, 결과를 그대로 전달하거나 환경에 맞게 가공하여 응답한다.
+
+- 엔드포인트
+  - `GET /api/external/joke` → https://api.chucknorris.io/jokes/random 에 비동기 요청 후 결과 반환
+  - `Accept-Language` 헤더를 읽어 응답 값 앞에 `[lang=xx]` 프리픽스를 붙임
+- 포인트
+  - `JokeService` 는 `WebClient.Builder` 를 주입받아 외부 API를 호출
+  - 실패 시 `onErrorResume` 으로 대체 메시지 응답
+  - 전체 파이프라인이 `Mono<JokeResponse>` 형태로 처리되며 논블로킹
+
+---
+
+## 9. 예제 7 – TraceId 기반 Reactor Context + WebFilter
+
+**목표**: `WebFilter`에서 `traceId`를 생성하여 응답 헤더와 Reactor Context에 저장하고, 핸들러가 해당 값으로 로그를 찍도록 구성한다.
+
+- 흐름
+  - 클라이언트가 `X-Trace-Id` 헤더를 보내면 그대로 사용하고, 없으면 UUID를 생성.
+  - `TraceIdFilter`가 응답 헤더에 `X-Trace-Id` 를 추가하고 `.contextWrite(ctx -> ctx.put("traceId", traceId))` 로 Reactor Context에 저장.
+  - `TimeController` 등에서는 `Mono.deferContextual`/`Flux.deferContextual`을 사용해 traceId를 꺼내 로그나 응답에 활용할 수 있다.
+  - 필요하다면 `ServerWebExchange` 속성이나 응답 본문에도 traceId를 노출할 수 있음.
+
+---
+
+## 10. 예제 8 – 채팅 메시지 브로드캐스트
+
+**목표**: `Sinks.Many` 를 이용해 POST 요청으로 들어온 메시지를 브로드캐스트하고, 클라이언트가 SSE로 실시간으로 구독하도록 구성한다.
+
+- 엔드포인트
+  - `POST /api/chat/messages` → `ChatMessageRequest` 를 받아 Sinks에 메시지 등록 (201 Created)
+  - `GET /api/chat/stream` → `Flux<ChatMessage>` 를 SSE로 스트리밍
+- 핵심 포인트
+  - `ChatService`는 `Sinks.many().multicast().onBackpressureBuffer()` 를 사용해 다수 구독자에게 메시지를 전달
+  - 스트리밍 구간에서 메시지는 `Instant` 기반 타임스탬프와 함께 전달
+
+---
+
+## 11. 마무리
 
 - 이 문서의 목표는 “WebFlux가 뭔지 알겠다”에서 한 단계 더 나아가,
   - “**직접 간단한 WebFlux API를 만들고, 스트림처럼 동작하는 것을 확인해 봤다**” 수준까지 올라가는 것이다.
@@ -126,4 +165,3 @@
   - 인증/로깅/컨텍스트/스케줄러/에러 처리 등 앞에서 정리한 내용들을 조합해
   - 더 복잡한 흐름을 만들게 되므로,
   - 여기 예제들을 발판으로 점차 범위를 넓혀 가면 좋다.
-
