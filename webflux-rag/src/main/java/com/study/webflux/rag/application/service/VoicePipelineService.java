@@ -104,11 +104,26 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 				tracker.recordLlmOutput(sentence);
 			});
 
+		Flux<byte[]> audioFlux = sentences.publish(sharedSentences -> {
+			Mono<String> firstSentenceMono = sharedSentences.take(1).singleOrEmpty().cache();
+			Flux<String> remainingSentences = sharedSentences.skip(1);
+
+			Flux<byte[]> firstSentenceAudio = firstSentenceMono
+				.flatMapMany(sentence ->
+					ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence))
+				)
+				.publishOn(Schedulers.boundedElastic());
+
+			Flux<byte[]> remainingAudio = remainingSentences
+				.publishOn(Schedulers.boundedElastic())
+				.concatMap(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence)));
+
+			return Flux.mergeSequential(firstSentenceAudio, remainingAudio);
+		});
+
 		Flux<byte[]> audioStream = tracker.traceFlux(
 				VoicePipelineStage.TTS_SYNTHESIS,
-				() -> sentences
-					.publishOn(Schedulers.boundedElastic())
-					.concatMap(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence)))
+				() -> audioFlux
 			)
 			.doOnNext(chunk -> {
 				tracker.incrementStageCounter(VoicePipelineStage.TTS_SYNTHESIS, "audioChunks", 1);
