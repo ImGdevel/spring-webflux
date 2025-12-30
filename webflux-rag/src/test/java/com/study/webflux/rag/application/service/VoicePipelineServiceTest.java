@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.study.webflux.rag.application.monitoring.VoicePipelineMonitor;
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
 import com.study.webflux.rag.domain.model.llm.CompletionRequest;
 import com.study.webflux.rag.domain.model.rag.RetrievalContext;
@@ -48,17 +49,20 @@ class VoicePipelineServiceTest {
 	private SentenceAssembler sentenceAssembler;
 
 	private VoicePipelineService service;
+	private VoicePipelineMonitor pipelineMonitor;
 
 	@BeforeEach
 	void setUp() {
 		sentenceAssembler = new SentenceAssembler();
+		pipelineMonitor = new VoicePipelineMonitor(summary -> {});
 		service = new VoicePipelineService(
 			llmPort,
 			ttsPort,
 			retrievalPort,
 			conversationRepository,
 			promptTemplate,
-			sentenceAssembler
+			sentenceAssembler,
+			pipelineMonitor
 		);
 	}
 
