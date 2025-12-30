@@ -42,8 +42,7 @@ class VoicePipelineV2ServiceTest {
 			new StubLlmStreamingClient(),
 			ttsClient,
 			new SentenceAssemblyService(),
-			new AudioChunkingService(properties),
-			properties
+			new AudioChunkingService(properties)
 		);
 
 		VoiceV2Request request = new VoiceV2Request("ignored", Instant.EPOCH);
@@ -65,8 +64,7 @@ class VoicePipelineV2ServiceTest {
 			new StubLlmStreamingClient(),
 			new RecordingTtsStreamingClient(),
 			new SentenceAssemblyService(),
-			new AudioChunkingService(properties),
-			properties
+			new AudioChunkingService(properties)
 		);
 
 		VoiceV2Request request = new VoiceV2Request("ignored", Instant.EPOCH);

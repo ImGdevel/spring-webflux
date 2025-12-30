@@ -16,6 +16,3 @@ logging:
 voice:
   v2:
     chunk-size: 1024
-    llm-timeout: 5s
-    tts-timeout: 5s
-    llm-retry-attempts: 1
