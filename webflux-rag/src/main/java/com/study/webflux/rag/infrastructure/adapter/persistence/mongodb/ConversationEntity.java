@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public record ConversationEntity(
 	@Id String id,
 	String query,
+	String response,
 	Instant createdAt
 ) {
 }

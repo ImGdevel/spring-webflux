@@ -1,6 +1,9 @@
 package com.study.webflux.rag.application.service;
 
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,13 +12,14 @@ import org.springframework.stereotype.Service;
 import com.study.webflux.rag.application.monitoring.VoicePipelineMonitor;
 import com.study.webflux.rag.application.monitoring.VoicePipelineStage;
 import com.study.webflux.rag.application.monitoring.VoicePipelineTracker;
-import com.study.webflux.rag.domain.model.llm.CompletionRequest;
+import com.study.webflux.rag.domain.model.conversation.ConversationContext;
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
+import com.study.webflux.rag.domain.model.llm.CompletionRequest;
+import com.study.webflux.rag.domain.model.llm.Message;
 import com.study.webflux.rag.domain.model.rag.RetrievalContext;
 import com.study.webflux.rag.domain.port.in.VoicePipelineUseCase;
 import com.study.webflux.rag.domain.port.out.ConversationRepository;
 import com.study.webflux.rag.domain.port.out.LlmPort;
-import com.study.webflux.rag.domain.port.out.PromptTemplatePort;
 import com.study.webflux.rag.domain.port.out.RetrievalPort;
 import com.study.webflux.rag.domain.port.out.TtsPort;
 import com.study.webflux.rag.domain.service.SentenceAssembler;
@@ -33,7 +37,6 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 	private final TtsPort ttsPort;
 	private final RetrievalPort retrievalPort;
 	private final ConversationRepository conversationRepository;
-	private final PromptTemplatePort promptTemplate;
 	private final SentenceAssembler sentenceAssembler;
 	private final VoicePipelineMonitor pipelineMonitor;
 
@@ -42,14 +45,12 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 		TtsPort ttsPort,
 		RetrievalPort retrievalPort,
 		ConversationRepository conversationRepository,
-		PromptTemplatePort promptTemplate,
 		SentenceAssembler sentenceAssembler,
 		VoicePipelineMonitor pipelineMonitor) {
 		this.llmPort = llmPort;
 		this.ttsPort = ttsPort;
 		this.retrievalPort = retrievalPort;
 		this.conversationRepository = conversationRepository;
-		this.promptTemplate = promptTemplate;
 		this.sentenceAssembler = sentenceAssembler;
 		this.pipelineMonitor = pipelineMonitor;
 	}
@@ -74,7 +75,9 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 
 		ttsWarmup.subscribe();
 
-		Mono<RetrievalContext> retrievalContext = tracker.traceMono(VoicePipelineStage.QUERY_PERSISTENCE, () -> saveQuery(text))
+		Mono<ConversationTurn> queryTurn = tracker.traceMono(VoicePipelineStage.QUERY_PERSISTENCE, () -> saveQuery(text));
+
+		Mono<RetrievalContext> retrievalContext = queryTurn
 			.flatMap(turn -> tracker.traceMono(VoicePipelineStage.RETRIEVAL, () -> retrievalPort.retrieve(text, 3)))
 			.doOnNext(context -> tracker.recordStageAttribute(
 				VoicePipelineStage.RETRIEVAL,
@@ -82,16 +85,21 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 				context.documentCount()
 			));
 
-		Flux<String> llmTokens = retrievalContext.flatMapMany(context ->
-				tracker.traceMono(
+		Flux<String> llmTokens = Mono.zip(retrievalContext, loadConversationHistory(), queryTurn)
+			.flatMapMany(tuple -> {
+				RetrievalContext context = tuple.getT1();
+				ConversationContext conversationContext = tuple.getT2();
+				ConversationTurn currentTurn = tuple.getT3();
+
+				return tracker.traceMono(
 					VoicePipelineStage.PROMPT_BUILDING,
-					() -> Mono.fromCallable(() -> promptTemplate.buildPrompt(context))
-				).flatMapMany(prompt -> {
-					CompletionRequest request = CompletionRequest.streaming(prompt, "gpt-3.5-turbo");
+					() -> Mono.fromCallable(() -> buildMessages(context, conversationContext, currentTurn.query()))
+				).flatMapMany(messages -> {
+					CompletionRequest request = CompletionRequest.withMessages(messages, "gpt-3.5-turbo", true);
 					tracker.recordStageAttribute(VoicePipelineStage.LLM_COMPLETION, "model", request.model());
 					return tracker.traceFlux(VoicePipelineStage.LLM_COMPLETION, () -> llmPort.streamCompletion(request));
-				})
-			)
+				});
+			})
 			.subscribeOn(Schedulers.boundedElastic())
 			.doOnNext(token -> tracker.incrementStageCounter(VoicePipelineStage.LLM_COMPLETION, "tokenCount", 1));
 
@@ -102,11 +110,23 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 			.doOnNext(sentence -> {
 				tracker.incrementStageCounter(VoicePipelineStage.SENTENCE_ASSEMBLY, "sentenceCount", 1);
 				tracker.recordLlmOutput(sentence);
-			});
+			})
+			.share();
 
 		Flux<byte[]> audioFlux = sentences.publish(sharedSentences -> {
-			Mono<String> firstSentenceMono = sharedSentences.take(1).singleOrEmpty().cache();
-			Flux<String> remainingSentences = sharedSentences.skip(1);
+			Flux<String> cachedSentences = sharedSentences.cache();
+
+			cachedSentences.collectList()
+				.flatMap(sentenceList -> {
+					String fullResponse = String.join(" ", sentenceList);
+					return queryTurn.flatMap(turn ->
+						conversationRepository.save(turn.withResponse(fullResponse))
+					);
+				})
+				.subscribe();
+
+			Mono<String> firstSentenceMono = cachedSentences.take(1).singleOrEmpty().cache();
+			Flux<String> remainingSentences = cachedSentences.skip(1);
 
 			Flux<byte[]> firstSentenceAudio = firstSentenceMono
 				.flatMapMany(sentence ->
@@ -136,5 +156,45 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 	private Mono<ConversationTurn> saveQuery(String text) {
 		ConversationTurn turn = ConversationTurn.create(text);
 		return conversationRepository.save(turn);
+	}
+
+	private Mono<ConversationContext> loadConversationHistory() {
+		return conversationRepository.findRecent(10)
+			.collectList()
+			.map(ConversationContext::of)
+			.defaultIfEmpty(ConversationContext.empty());
+	}
+
+	private List<Message> buildMessages(RetrievalContext context, ConversationContext conversationContext, String currentQuery) {
+		List<Message> messages = new ArrayList<>();
+
+		String systemPrompt = buildSystemPrompt(context);
+		messages.add(Message.system(systemPrompt));
+
+		conversationContext.turns().stream()
+			.filter(turn -> turn.response() != null)
+			.forEach(turn -> {
+				messages.add(Message.user(turn.query()));
+				messages.add(Message.assistant(turn.response()));
+			});
+
+		messages.add(Message.user(currentQuery));
+
+		return messages;
+	}
+
+	private String buildSystemPrompt(RetrievalContext context) {
+		if (context.isEmpty()) {
+			return "당신은 친절하고 도움이 되는 AI 어시스턴트입니다.";
+		}
+
+		String contextText = context.documents().stream()
+			.map(doc -> doc.content())
+			.collect(Collectors.joining("\n"));
+
+		return String.format(
+			"당신은 친절하고 도움이 되는 AI 어시스턴트입니다.\n\n다음은 참고할 수 있는 관련 문서입니다:\n%s\n\n위 문서를 참고하여 답변해주세요.",
+			contextText
+		);
 	}
 }
