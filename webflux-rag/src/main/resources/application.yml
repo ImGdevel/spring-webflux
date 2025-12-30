@@ -4,3 +4,16 @@ spring:
 
 server:
   port: 8081
+
+rag:
+  voice:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: https://api.openai.com/v1
+      model: gpt-3.5-turbo
+    supertone:
+      api-key: ${SUPERTONE_API_KEY:}
+      base-url: https://supertoneapi.com/v1
+      voice-id: default
+      language: ko
+      output-format: wav
