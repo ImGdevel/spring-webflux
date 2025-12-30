@@ -2,3 +2,6 @@ rootProject.name = 'webflux'
 
 include 'webflux-core'
 include 'webflux-rag'
+include 'webflux-voice-legacy'
+
+include 'pipeline'
