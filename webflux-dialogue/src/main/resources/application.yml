@@ -28,3 +28,14 @@ rag:
         pitch-shift: 0
         pitch-variance: 1.0
         speed: 1.1
+    qdrant:
+      url: ${QDRANT_URL:http://localhost:6333}
+      api-key: ${QDRANT_API_KEY:}
+      vector-dimension: 1536
+      collection-name: user_memories
+    memory:
+      embedding-model: text-embedding-3-small
+      extraction-model: gpt-4o-mini
+      conversation-threshold: 5
+      importance-boost: 0.05
+      importance-threshold: 0.3

@@ -16,8 +16,10 @@ import com.study.webflux.rag.domain.model.conversation.ConversationContext;
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
 import com.study.webflux.rag.domain.model.llm.CompletionRequest;
 import com.study.webflux.rag.domain.model.llm.Message;
+import com.study.webflux.rag.domain.model.memory.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.model.rag.RetrievalContext;
 import com.study.webflux.rag.domain.port.in.DialoguePipelineUseCase;
+import com.study.webflux.rag.domain.port.out.ConversationCounterPort;
 import com.study.webflux.rag.domain.port.out.ConversationRepository;
 import com.study.webflux.rag.domain.port.out.LlmPort;
 import com.study.webflux.rag.domain.port.out.RetrievalPort;
@@ -39,6 +41,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	private final ConversationRepository conversationRepository;
 	private final SentenceAssembler sentenceAssembler;
 	private final DialoguePipelineMonitor pipelineMonitor;
+	private final ConversationCounterPort conversationCounterPort;
+	private final MemoryExtractionService memoryExtractionService;
 
 	public DialoguePipelineService(
 		LlmPort llmPort,
@@ -46,13 +50,17 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		RetrievalPort retrievalPort,
 		ConversationRepository conversationRepository,
 		SentenceAssembler sentenceAssembler,
-		DialoguePipelineMonitor pipelineMonitor) {
+		DialoguePipelineMonitor pipelineMonitor,
+		ConversationCounterPort conversationCounterPort,
+		MemoryExtractionService memoryExtractionService) {
 		this.llmPort = llmPort;
 		this.ttsPort = ttsPort;
 		this.retrievalPort = retrievalPort;
 		this.conversationRepository = conversationRepository;
 		this.sentenceAssembler = sentenceAssembler;
 		this.pipelineMonitor = pipelineMonitor;
+		this.conversationCounterPort = conversationCounterPort;
+		this.memoryExtractionService = memoryExtractionService;
 	}
 
 	@Override
@@ -77,6 +85,28 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 
 		Mono<ConversationTurn> queryTurn = tracker.traceMono(DialoguePipelineStage.QUERY_PERSISTENCE, () -> saveQuery(text));
 
+		Mono<Void> memoryExtraction = queryTurn
+			.flatMap(turn -> conversationCounterPort.increment())
+			.flatMap(count -> memoryExtractionService.checkAndExtract())
+			.subscribeOn(Schedulers.boundedElastic())
+			.onErrorResume(error -> {
+				log.warn("Pipeline {} memory extraction failed", tracker.pipelineId(), error);
+				return Mono.empty();
+			});
+
+		memoryExtraction.subscribe();
+
+		Mono<MemoryRetrievalResult> memoryResult = queryTurn
+			.flatMap(turn -> tracker.traceMono(
+				DialoguePipelineStage.MEMORY_RETRIEVAL,
+				() -> retrievalPort.retrieveMemories(text, 5)
+			))
+			.doOnNext(result -> tracker.recordStageAttribute(
+				DialoguePipelineStage.MEMORY_RETRIEVAL,
+				"memoryCount",
+				result.totalCount()
+			));
+
 		Mono<RetrievalContext> retrievalContext = queryTurn
 			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.RETRIEVAL, () -> retrievalPort.retrieve(text, 3)))
 			.doOnNext(context -> tracker.recordStageAttribute(
@@ -85,15 +115,16 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 				context.documentCount()
 			));
 
-		Flux<String> llmTokens = Mono.zip(retrievalContext, loadConversationHistory(), queryTurn)
+		Flux<String> llmTokens = Mono.zip(retrievalContext, memoryResult, loadConversationHistory(), queryTurn)
 			.flatMapMany(tuple -> {
 				RetrievalContext context = tuple.getT1();
-				ConversationContext conversationContext = tuple.getT2();
-				ConversationTurn currentTurn = tuple.getT3();
+				MemoryRetrievalResult memories = tuple.getT2();
+				ConversationContext conversationContext = tuple.getT3();
+				ConversationTurn currentTurn = tuple.getT4();
 
 				return tracker.traceMono(
 					DialoguePipelineStage.PROMPT_BUILDING,
-					() -> Mono.fromCallable(() -> buildMessages(context, conversationContext, currentTurn.query()))
+					() -> Mono.fromCallable(() -> buildMessages(context, memories, conversationContext, currentTurn.query()))
 				).flatMapMany(messages -> {
 					CompletionRequest request = CompletionRequest.withMessages(messages, "gpt-4o-mini", true);
 					tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION, "model", request.model());
@@ -165,10 +196,15 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 			.defaultIfEmpty(ConversationContext.empty());
 	}
 
-	private List<Message> buildMessages(RetrievalContext context, ConversationContext conversationContext, String currentQuery) {
+	private List<Message> buildMessages(
+		RetrievalContext context,
+		MemoryRetrievalResult memories,
+		ConversationContext conversationContext,
+		String currentQuery
+	) {
 		List<Message> messages = new ArrayList<>();
 
-		String systemPrompt = buildSystemPrompt(context);
+		String systemPrompt = buildSystemPrompt(context, memories);
 		messages.add(Message.system(systemPrompt));
 
 		conversationContext.turns().stream()
@@ -183,18 +219,38 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		return messages;
 	}
 
-	private String buildSystemPrompt(RetrievalContext context) {
-		if (context.isEmpty()) {
-			return "자연스럽게 대화하세요. 과도한 존댓말이나 '도와드리겠습니다' 같은 틀에 박힌 표현은 피하세요.";
+	private String buildSystemPrompt(RetrievalContext context, MemoryRetrievalResult memories) {
+		StringBuilder prompt = new StringBuilder();
+
+		prompt.append("자연스럽게 대화하세요. 과도한 존댓말이나 '도와드리겠습니다' 같은 틀에 박힌 표현은 피하세요.\n\n");
+
+		if (!memories.isEmpty()) {
+			prompt.append("대화 상대에 대한 기억:\n");
+
+			if (!memories.experientialMemories().isEmpty()) {
+				prompt.append("\n경험적 기억:\n");
+				memories.experientialMemories().forEach(m ->
+					prompt.append("- ").append(m.content()).append("\n")
+				);
+			}
+
+			if (!memories.factualMemories().isEmpty()) {
+				prompt.append("\n사실 기반 기억:\n");
+				memories.factualMemories().forEach(m ->
+					prompt.append("- ").append(m.content()).append("\n")
+				);
+			}
+
+			prompt.append("\n");
 		}
 
-		String contextText = context.documents().stream()
-			.map(doc -> doc.content())
-			.collect(Collectors.joining("\n"));
+		if (!context.isEmpty()) {
+			String contextText = context.documents().stream()
+				.map(doc -> doc.content())
+				.collect(Collectors.joining("\n"));
+			prompt.append("참고 정보:\n").append(contextText).append("\n\n");
+		}
 
-		return String.format(
-			"다음 정보를 참고해서 답변하세요:\n\n%s\n\n자연스럽게 대화하세요. 필요한 정보만 간결하게 답변하고, 불필요한 인사말이나 '도와드리겠습니다' 같은 표현은 생략하세요.",
-			contextText
-		);
+		return prompt.toString();
 	}
 }
