@@ -32,10 +32,22 @@ public class RagVoiceController {
 		return pipelineService.runPipeline(request);
 	}
 
-	@PostMapping(path = "/audio", produces = "audio/wav")
-	public Flux<DataBuffer> ragVoiceAudio(@Valid @RequestBody RagVoiceRequest request) {
+	@PostMapping(path = "/audio/wav", produces = "audio/wav")
+	public Flux<DataBuffer> ragVoiceAudioWav(@Valid @RequestBody RagVoiceRequest request) {
 		DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 		return pipelineService.runPipelineAudio(request)
 			.map(bufferFactory::wrap);
+	}
+
+	@PostMapping(path = "/audio/mp3", produces = "audio/mpeg")
+	public Flux<DataBuffer> ragVoiceAudioMp3(@Valid @RequestBody RagVoiceRequest request) {
+		DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
+		return pipelineService.runPipelineAudio(request)
+			.map(bufferFactory::wrap);
+	}
+
+	@PostMapping(path = "/audio", produces = "audio/wav")
+	public Flux<DataBuffer> ragVoiceAudio(@Valid @RequestBody RagVoiceRequest request) {
+		return ragVoiceAudioWav(request);
 	}
 }

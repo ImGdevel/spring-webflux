@@ -1,6 +1,7 @@
 package com.study.webflux.rag.voice.client;
 
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.core.io.buffer.DataBuffer;
@@ -39,13 +40,20 @@ public class SupertoneTtsStreamingClient implements TtsStreamingClient {
 
 	@Override
 	public Flux<byte[]> streamAudio(String sentence) {
-		var payload = Map.of(
-			"text", sentence,
-			"language", properties.getSupertone().getLanguage(),
-			"style", properties.getSupertone().getStyle(),
-			"output_format", properties.getSupertone().getOutputFormat(),
-			"include_phonemes", false
+		var settings = properties.getSupertone().getVoiceSettings();
+		var voiceSettings = Map.of(
+			"pitch_shift", settings.getPitchShift(),
+			"pitch_variance", settings.getPitchVariance(),
+			"speed", settings.getSpeed()
 		);
+
+		var payload = new HashMap<String, Object>();
+		payload.put("text", sentence);
+		payload.put("language", properties.getSupertone().getLanguage());
+		payload.put("style", properties.getSupertone().getStyle());
+		payload.put("output_format", properties.getSupertone().getOutputFormat());
+		payload.put("voice_settings", voiceSettings);
+		payload.put("include_phonemes", false);
 
 		return webClient.post()
 			.uri("/v1/text-to-speech/{voice_id}/stream", properties.getSupertone().getVoiceId())

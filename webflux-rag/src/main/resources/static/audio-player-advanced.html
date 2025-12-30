@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAG Voice Streaming Player</title>
+    <title>RAG Voice Player - Advanced</title>
     <style>
         * {
             margin: 0;
@@ -34,15 +34,40 @@
             margin-bottom: 30px;
             font-size: 14px;
         }
-        .badge {
-            display: inline-block;
-            padding: 4px 12px;
-            background: #4caf50;
+        .format-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .format-option {
+            flex: 1;
+        }
+        .format-option input[type="radio"] {
+            display: none;
+        }
+        .format-option label {
+            display: block;
+            padding: 12px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        .format-option input[type="radio"]:checked + label {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            border-radius: 12px;
+            border-color: transparent;
+        }
+        .format-info {
             font-size: 11px;
-            font-weight: bold;
-            margin-left: 8px;
+            margin-top: 4px;
+            opacity: 0.7;
         }
         .input-group {
             margin-bottom: 20px;
@@ -134,43 +159,61 @@
             width: 100%;
             margin-top: 10px;
         }
-        .stats {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #666;
+        .format-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 8px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎤 RAG Voice Streaming</h1>
-        <p class="subtitle">
-            Media Source Extensions로 실시간 스트리밍<span class="badge">MP3 ONLY</span>
-        </p>
+        <h1>🎤 RAG Voice Player</h1>
+        <p class="subtitle">오디오 포맷을 선택하고 음성을 생성하세요</p>
+
+        <div class="format-selector">
+            <div class="format-option">
+                <input type="radio" id="formatWav" name="format" value="wav" checked>
+                <label for="formatWav">
+                    WAV
+                    <div class="format-info">고음질, 큰 용량</div>
+                </label>
+            </div>
+            <div class="format-option">
+                <input type="radio" id="formatMp3" name="format" value="mp3">
+                <label for="formatMp3">
+                    MP3
+                    <div class="format-info">압축, 스트리밍 최적화</div>
+                </label>
+            </div>
+        </div>
 
         <div class="input-group">
             <label for="queryText">질문 입력</label>
             <textarea id="queryText" placeholder="예: WebFlux란 무엇인가요?">안녕하세요</textarea>
         </div>
 
-        <button id="sendBtn" onclick="streamAudio()">
-            <span id="btnText">스트리밍 재생</span>
+        <button id="sendBtn" onclick="sendQuery()">
+            <span id="btnText">음성 생성 및 재생</span>
         </button>
 
         <div id="status" class="status"></div>
 
         <div id="audioPlayer" class="audio-player">
-            <strong>스트리밍 재생 중...</strong>
-            <audio id="audio" controls></audio>
-            <div id="stats" class="stats"></div>
+            <strong>재생 중...</strong><span id="formatBadge" class="format-badge"></span>
+            <audio id="audio" controls autoplay></audio>
         </div>
     </div>
 
     <script>
-        let mediaSource;
-        let sourceBuffer;
-        let chunks = [];
-        let chunkCount = 0;
+        function getSelectedFormat() {
+            return document.querySelector('input[name="format"]:checked').value;
+        }
 
         function showStatus(message, type) {
             const status = document.getElementById('status');
@@ -179,12 +222,9 @@
             status.style.display = 'block';
         }
 
-        function updateStats(message) {
-            document.getElementById('stats').textContent = message;
-        }
-
-        async function streamAudio() {
+        async function sendQuery() {
             const queryText = document.getElementById('queryText').value.trim();
+            const format = getSelectedFormat();
 
             if (!queryText) {
                 showStatus('질문을 입력해주세요', 'error');
@@ -195,93 +235,59 @@
             const btnText = document.getElementById('btnText');
 
             sendBtn.disabled = true;
-            btnText.innerHTML = '<span class="spinner"></span>스트리밍 중...';
+            btnText.innerHTML = '<span class="spinner"></span>음성 생성 중...';
 
-            showStatus('MP3 스트리밍 시작...', 'info');
+            showStatus(`${format.toUpperCase()} 포맷으로 RAG 파이프라인 실행 중...`, 'info');
 
-            const audioElement = document.getElementById('audio');
+            try {
+                const endpoint = `http://localhost:8081/rag/voice/audio/${format}`;
 
-            // MediaSource 초기화
-            if ('MediaSource' in window) {
-                mediaSource = new MediaSource();
-                audioElement.src = URL.createObjectURL(mediaSource);
-
-                mediaSource.addEventListener('sourceopen', async () => {
-                    try {
-                        sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg');
-                        chunks = [];
-                        chunkCount = 0;
-
-                        const response = await fetch('http://localhost:8081/rag/voice/audio/mp3', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                text: queryText,
-                                requestedAt: new Date().toISOString()
-                            })
-                        });
-
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-
-                        const reader = response.body.getReader();
-                        let totalBytes = 0;
-
-                        document.getElementById('audioPlayer').style.display = 'block';
-                        audioElement.play();
-
-                        sourceBuffer.addEventListener('updateend', () => {
-                            if (chunks.length > 0 && !sourceBuffer.updating) {
-                                sourceBuffer.appendBuffer(chunks.shift());
-                            }
-                        });
-
-                        while (true) {
-                            const { done, value } = await reader.read();
-
-                            if (done) {
-                                if (chunks.length === 0 && !sourceBuffer.updating) {
-                                    mediaSource.endOfStream();
-                                }
-                                showStatus('스트리밍 완료', 'success');
-                                break;
-                            }
-
-                            chunkCount++;
-                            totalBytes += value.byteLength;
-                            updateStats(`청크: ${chunkCount}, 총 크기: ${(totalBytes / 1024).toFixed(2)} KB`);
-
-                            if (sourceBuffer.updating || chunks.length > 0) {
-                                chunks.push(value);
-                            } else {
-                                sourceBuffer.appendBuffer(value);
-                            }
-
-                            showStatus(`스트리밍 중... (청크 ${chunkCount})`, 'success');
-                        }
-
-                    } catch (error) {
-                        console.error('Streaming error:', error);
-                        showStatus(`스트리밍 오류: ${error.message}`, 'error');
-                    } finally {
-                        sendBtn.disabled = false;
-                        btnText.textContent = '스트리밍 재생';
-                    }
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: queryText,
+                        requestedAt: new Date().toISOString()
+                    })
                 });
 
-            } else {
-                showStatus('이 브라우저는 Media Source Extensions를 지원하지 않습니다', 'error');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+
+                const audioElement = document.getElementById('audio');
+                audioElement.src = audioUrl;
+
+                document.getElementById('formatBadge').textContent = format.toUpperCase();
+                document.getElementById('audioPlayer').style.display = 'block';
+
+                audioElement.play().then(() => {
+                    showStatus(`음성 재생 중 (${format.toUpperCase()})...`, 'success');
+                }).catch(err => {
+                    showStatus('재생 오류: ' + err.message, 'error');
+                });
+
+                audioElement.onended = () => {
+                    showStatus('재생 완료', 'success');
+                };
+
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus(`오류 발생: ${error.message}`, 'error');
+            } finally {
                 sendBtn.disabled = false;
-                btnText.textContent = '스트리밍 재생';
+                btnText.textContent = '음성 생성 및 재생';
             }
         }
 
         document.getElementById('queryText').addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                streamAudio();
+                sendQuery();
             }
         });
     </script>

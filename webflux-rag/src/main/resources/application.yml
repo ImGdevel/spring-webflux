@@ -20,7 +20,11 @@ rag:
     supertone:
       api-key: ${SUPERTONE_API_KEY:}
       base-url: https://supertoneapi.com
-      voice-id: ${SUPERTONE_VOICE_ID:91992bbd4758bdcf9c9b01}
+      voice-id: 2c5f135cb33f49a2c8882d
       language: ko
       style: neutral
-      output-format: wav
+      output-format: ${SUPERTONE_OUTPUT_FORMAT:mp3}
+      voice-settings:
+        pitch-shift: 0
+        pitch-variance: 1.0
+        speed: 1.1
