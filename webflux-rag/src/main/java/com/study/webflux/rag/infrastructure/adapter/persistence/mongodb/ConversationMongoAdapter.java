@@ -19,21 +19,21 @@ public class ConversationMongoAdapter implements ConversationRepository {
 
 	@Override
 	public Mono<ConversationTurn> save(ConversationTurn turn) {
-		ConversationEntity entity = new ConversationEntity(turn.id(), turn.query(), turn.createdAt());
+		ConversationEntity entity = new ConversationEntity(turn.id(), turn.query(), turn.response(), turn.createdAt());
 		return mongoRepository.save(entity)
-			.map(saved -> ConversationTurn.withId(saved.id(), saved.query(), saved.createdAt()));
+			.map(saved -> ConversationTurn.withId(saved.id(), saved.query(), saved.response(), saved.createdAt()));
 	}
 
 	@Override
 	public Flux<ConversationTurn> findRecent(int limit) {
 		return mongoRepository.findAll()
 			.takeLast(limit)
-			.map(entity -> ConversationTurn.withId(entity.id(), entity.query(), entity.createdAt()));
+			.map(entity -> ConversationTurn.withId(entity.id(), entity.query(), entity.response(), entity.createdAt()));
 	}
 
 	@Override
 	public Flux<ConversationTurn> findAll() {
 		return mongoRepository.findAll()
-			.map(entity -> ConversationTurn.withId(entity.id(), entity.query(), entity.createdAt()));
+			.map(entity -> ConversationTurn.withId(entity.id(), entity.query(), entity.response(), entity.createdAt()));
 	}
 }

@@ -10,6 +10,7 @@ import com.study.webflux.rag.application.monitoring.VoicePipelineMonitor;
 import com.study.webflux.rag.application.monitoring.VoicePipelineStage;
 import com.study.webflux.rag.application.monitoring.VoicePipelineTracker;
 import com.study.webflux.rag.domain.model.llm.CompletionRequest;
+import com.study.webflux.rag.domain.model.conversation.ConversationContext;
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
 import com.study.webflux.rag.domain.model.rag.RetrievalContext;
 import com.study.webflux.rag.domain.port.in.VoicePipelineUseCase;
@@ -74,7 +75,9 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 
 		ttsWarmup.subscribe();
 
-		Mono<RetrievalContext> retrievalContext = tracker.traceMono(VoicePipelineStage.QUERY_PERSISTENCE, () -> saveQuery(text))
+		Mono<ConversationTurn> queryTurn = tracker.traceMono(VoicePipelineStage.QUERY_PERSISTENCE, () -> saveQuery(text));
+
+		Mono<RetrievalContext> retrievalContext = queryTurn
 			.flatMap(turn -> tracker.traceMono(VoicePipelineStage.RETRIEVAL, () -> retrievalPort.retrieve(text, 3)))
 			.doOnNext(context -> tracker.recordStageAttribute(
 				VoicePipelineStage.RETRIEVAL,
@@ -82,16 +85,20 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 				context.documentCount()
 			));
 
-		Flux<String> llmTokens = retrievalContext.flatMapMany(context ->
-				tracker.traceMono(
+		Flux<String> llmTokens = Mono.zip(retrievalContext, loadConversationHistory())
+			.flatMapMany(tuple -> {
+				RetrievalContext context = tuple.getT1();
+				ConversationContext conversationContext = tuple.getT2();
+
+				return tracker.traceMono(
 					VoicePipelineStage.PROMPT_BUILDING,
-					() -> Mono.fromCallable(() -> promptTemplate.buildPrompt(context))
+					() -> Mono.fromCallable(() -> promptTemplate.buildPromptWithConversation(context, conversationContext))
 				).flatMapMany(prompt -> {
 					CompletionRequest request = CompletionRequest.streaming(prompt, "gpt-3.5-turbo");
 					tracker.recordStageAttribute(VoicePipelineStage.LLM_COMPLETION, "model", request.model());
 					return tracker.traceFlux(VoicePipelineStage.LLM_COMPLETION, () -> llmPort.streamCompletion(request));
-				})
-			)
+				});
+			})
 			.subscribeOn(Schedulers.boundedElastic())
 			.doOnNext(token -> tracker.incrementStageCounter(VoicePipelineStage.LLM_COMPLETION, "tokenCount", 1));
 
@@ -99,10 +106,27 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 				VoicePipelineStage.SENTENCE_ASSEMBLY,
 				() -> sentenceAssembler.assemble(llmTokens)
 			)
+			.cache()
 			.doOnNext(sentence -> {
 				tracker.incrementStageCounter(VoicePipelineStage.SENTENCE_ASSEMBLY, "sentenceCount", 1);
 				tracker.recordLlmOutput(sentence);
 			});
+
+		StringBuilder responseBuilder = new StringBuilder();
+		sentences.subscribe(sentence -> responseBuilder.append(sentence).append(" "));
+
+		Mono<Void> saveResponse = queryTurn
+			.delayUntil(turn -> sentences.then())
+			.flatMap(turn -> {
+				String fullResponse = responseBuilder.toString().trim();
+				if (!fullResponse.isEmpty()) {
+					return conversationRepository.save(turn.withResponse(fullResponse));
+				}
+				return Mono.empty();
+			})
+			.then();
+
+		saveResponse.subscribe();
 
 		Flux<byte[]> audioFlux = sentences.publish(sharedSentences -> {
 			Mono<String> firstSentenceMono = sharedSentences.take(1).singleOrEmpty().cache();
@@ -136,5 +160,12 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 	private Mono<ConversationTurn> saveQuery(String text) {
 		ConversationTurn turn = ConversationTurn.create(text);
 		return conversationRepository.save(turn);
+	}
+
+	private Mono<ConversationContext> loadConversationHistory() {
+		return conversationRepository.findRecent(10)
+			.collectList()
+			.map(ConversationContext::of)
+			.defaultIfEmpty(ConversationContext.empty());
 	}
 }

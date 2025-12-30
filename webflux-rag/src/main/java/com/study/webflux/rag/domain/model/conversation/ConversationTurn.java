@@ -5,6 +5,7 @@ import java.time.Instant;
 public record ConversationTurn(
 	String id,
 	String query,
+	String response,
 	Instant createdAt
 ) {
 	public ConversationTurn {
@@ -17,10 +18,14 @@ public record ConversationTurn(
 	}
 
 	public static ConversationTurn create(String query) {
-		return new ConversationTurn(null, query, Instant.now());
+		return new ConversationTurn(null, query, null, Instant.now());
 	}
 
-	public static ConversationTurn withId(String id, String query, Instant createdAt) {
-		return new ConversationTurn(id, query, createdAt);
+	public static ConversationTurn withId(String id, String query, String response, Instant createdAt) {
+		return new ConversationTurn(id, query, response, createdAt);
+	}
+
+	public ConversationTurn withResponse(String response) {
+		return new ConversationTurn(this.id, this.query, response, this.createdAt);
 	}
 }
