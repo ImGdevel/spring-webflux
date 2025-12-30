@@ -12,7 +12,3 @@ spring:
 logging:
   level:
     org.springframework.web: info
-
-voice:
-  v2:
-    chunk-size: 1024

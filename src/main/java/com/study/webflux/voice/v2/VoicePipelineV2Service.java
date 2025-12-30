@@ -5,6 +5,8 @@ import java.util.Base64;
 import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * v2 음성 파이프라인의 핵심 오케스트레이션을 담당하는 서비스.
@@ -12,28 +14,27 @@ import reactor.core.publisher.Flux;
  * <p>
  * 1. LLM 스트리밍 API 로부터 텍스트 조각 스트림을 받고<br>
  * 2. 문장 단위로 버퍼링한 다음<br>
- * 3. 각 문장을 TTS 스트리밍 API 에 전달해 오디오 스트림을 생성한다.<br>
- * 4. 구성 설정(`voice.v2.chunk-size`)에 따라 TTS 바이너리를 지정한 크기로 다시 묶어서 클라이언트에 전달한다.
+ * 3. 각 문장을 TTS 스트리밍 API 에 전달해 오디오 스트림을 생성한다.
+ * 4. `Schedulers.boundedElastic()` 을 통해 블로킹 I/O 가능성을 분리한다.
  * </p>
  */
 @Service
 public class VoicePipelineV2Service {
 
+	private static final Scheduler BLOCKING_SCHEDULER = Schedulers.boundedElastic();
+
 	private final LlmStreamingClient llmStreamingClient;
 	private final TtsStreamingClient ttsStreamingClient;
 	private final SentenceAssemblyService sentenceAssemblyService;
-	private final AudioChunkingService audioChunkingService;
 
 	public VoicePipelineV2Service(
 		LlmStreamingClient llmStreamingClient,
 		TtsStreamingClient ttsStreamingClient,
-		SentenceAssemblyService sentenceAssemblyService,
-		AudioChunkingService audioChunkingService
+		SentenceAssemblyService sentenceAssemblyService
 	) {
 		this.llmStreamingClient = llmStreamingClient;
 		this.ttsStreamingClient = ttsStreamingClient;
 		this.sentenceAssemblyService = sentenceAssemblyService;
-		this.audioChunkingService = audioChunkingService;
 	}
 
 	/**
@@ -43,10 +44,14 @@ public class VoicePipelineV2Service {
 	 * @return LLM → TTS 를 거친 바이너리 오디오 청크 스트림
 	 */
 	public Flux<byte[]> runPipeline(VoiceV2Request request) {
-		Flux<String> llmStream = llmStreamingClient.streamCompletion(request.text());
+		Flux<String> llmStream = llmStreamingClient.streamCompletion(request.text())
+			.subscribeOn(BLOCKING_SCHEDULER);
+
 		Flux<String> sentenceStream = sentenceAssemblyService.assemble(llmStream);
-		Flux<byte[]> rawAudioStream = sentenceStream.concatMap(ttsStreamingClient::streamAudio);
-		return audioChunkingService.chunk(rawAudioStream);
+
+		return sentenceStream
+			.publishOn(BLOCKING_SCHEDULER)
+			.concatMap(ttsStreamingClient::streamAudio);
 	}
 
 	/**
@@ -59,5 +64,4 @@ public class VoicePipelineV2Service {
 		return runPipeline(request)
 			.map(bytes -> Base64.getEncoder().encodeToString(bytes));
 	}
-
 }
