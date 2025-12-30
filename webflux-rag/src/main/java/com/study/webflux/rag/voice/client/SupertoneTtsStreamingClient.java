@@ -46,15 +46,25 @@ public class SupertoneTtsStreamingClient implements TtsStreamingClient {
 		);
 
 		return webClient.post()
-			.uri("/text-to-speech/{voice_id}/stream", properties.getSupertone().getVoiceId())
+			.uri("/v1/text-to-speech/{voice_id}/stream", properties.getSupertone().getVoiceId())
 			.contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(payload)
+			.accept(getAcceptMediaType())
 			.retrieve()
 			.bodyToFlux(DataBuffer.class)
 			.map(dataBuffer -> {
 				byte[] bytes = new byte[dataBuffer.readableByteCount()];
 				dataBuffer.read(bytes);
+				org.springframework.core.io.buffer.DataBufferUtils.release(dataBuffer);
 				return bytes;
 			});
+	}
+
+	private MediaType getAcceptMediaType() {
+		return switch (properties.getSupertone().getOutputFormat()) {
+			case "mp3" -> MediaType.parseMediaType("audio/mpeg");
+			case "wav" -> MediaType.parseMediaType("audio/wav");
+			default -> MediaType.APPLICATION_OCTET_STREAM;
+		};
 	}
 }
