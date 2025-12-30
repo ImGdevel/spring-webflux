@@ -39,5 +39,9 @@ out/
 ### Node Js ###
 /node_modules
 
+### Claude ###
+.claude/
+Claude.md
+
 
 .DS_Store
