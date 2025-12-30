@@ -3,11 +3,11 @@ package com.study.webflux.rag.infrastructure.config.properties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-import com.study.webflux.rag.infrastructure.config.constants.VoiceConstants;
+import com.study.webflux.rag.infrastructure.config.constants.DialogueConstants;
 
 @Component
-@ConfigurationProperties(prefix = "rag.voice")
-public class RagVoiceProperties {
+@ConfigurationProperties(prefix = "rag.dialogue")
+public class RagDialogueProperties {
 
 	private OpenAi openai = new OpenAi();
 	private Supertone supertone = new Supertone();
@@ -60,11 +60,11 @@ public class RagVoiceProperties {
 
 	public static class Supertone {
 		private String apiKey;
-		private String baseUrl = VoiceConstants.Supertone.BASE_URL;
-		private String voiceId = VoiceConstants.Supertone.Voice.ADAM_ID;
-		private String language = VoiceConstants.Supertone.Language.KOREAN;
-		private String style = VoiceConstants.Supertone.Style.NEUTRAL;
-		private String outputFormat = VoiceConstants.Supertone.OutputFormat.WAV;
+		private String baseUrl = DialogueConstants.Supertone.BASE_URL;
+		private String voiceId = DialogueConstants.Supertone.Voice.ADAM_ID;
+		private String language = DialogueConstants.Supertone.Language.KOREAN;
+		private String style = DialogueConstants.Supertone.Style.NEUTRAL;
+		private String outputFormat = DialogueConstants.Supertone.OutputFormat.WAV;
 		private VoiceSettings voiceSettings = new VoiceSettings();
 
 		public String getApiKey() {

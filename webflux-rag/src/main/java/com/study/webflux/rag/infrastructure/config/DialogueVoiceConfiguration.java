@@ -7,13 +7,13 @@ import com.study.webflux.rag.domain.model.voice.AudioFormat;
 import com.study.webflux.rag.domain.model.voice.Voice;
 import com.study.webflux.rag.domain.model.voice.VoiceSettings;
 import com.study.webflux.rag.domain.model.voice.VoiceStyle;
-import com.study.webflux.rag.infrastructure.config.properties.RagVoiceProperties;
+import com.study.webflux.rag.infrastructure.config.properties.RagDialogueProperties;
 
 @Configuration
-public class VoiceConfiguration {
+public class DialogueVoiceConfiguration {
 
 	@Bean
-	public Voice defaultVoice(RagVoiceProperties properties) {
+	public Voice defaultVoice(RagDialogueProperties properties) {
 		var supertone = properties.getSupertone();
 		var settings = supertone.getVoiceSettings();
 

@@ -32,7 +32,7 @@
 - ✅ `domain/port/out/RetrievalPort.java` - Retrieval 추상화
 - ✅ `domain/port/out/ConversationRepository.java` - 저장소 추상화
 - ✅ `domain/port/out/PromptTemplatePort.java` - 템플릿 추상화
-- ✅ `domain/port/in/VoicePipelineUseCase.java` - Use Case 인터페이스
+- ✅ `domain/port/in/DialoguePipelineUseCase.java` - Use Case 인터페이스
 
 #### 프롬프트 템플릿 (2개)
 - ✅ `resources/templates/default-prompt.txt` - 기본 프롬프트
@@ -81,7 +81,7 @@
 ### Phase 4: Configuration (완료)
 **생성된 파일: 3개**
 
-- ✅ `infrastructure/config/VoiceConfiguration.java` - Voice Bean 생성
+- ✅ `infrastructure/config/DialogueVoiceConfiguration.java` - Voice Bean 생성
 - ✅ `infrastructure/config/LlmConfiguration.java` - LLM Port Bean 생성
 - ✅ `infrastructure/config/TtsConfiguration.java` - TTS Port Bean 생성 (Voice 주입)
 
@@ -100,7 +100,7 @@ BUILD SUCCESSFUL
 ## ✅ Phase 5: Application Layer (완료)
 **생성된 파일: 1개**
 
-- ✅ `application/service/VoicePipelineService.java` - VoicePipelineUseCase 구현
+- ✅ `application/service/DialoguePipelineService.java` - DialoguePipelineUseCase 구현
   - LlmPort, TtsPort, RetrievalPort, ConversationRepository 등 모든 포트 활용
   - Reactive 파이프라인 오케스트레이션 (flatMap, flatMapMany, transform, concatMap)
   - Scheduler 전환 (boundedElastic)
@@ -108,8 +108,8 @@ BUILD SUCCESSFUL
   - 순수 오케스트레이션 로직 (비즈니스 로직은 도메인 계층에 위임)
 
 **설계 결정:**
-- VoicePipelineUseCase 인터페이스는 단순 String 입력 사용 (간결함)
-- Application DTO 불필요 - 컨트롤러가 RagVoiceRequest에서 text 추출
+- DialoguePipelineUseCase 인터페이스는 단순 String 입력 사용 (간결함)
+- Application DTO 불필요 - 컨트롤러가 RagDialogueRequest에서 text 추출
 - 도메인 모델 생성은 서비스 내부에서 처리 (ConversationTurn.create)
 
 ---
@@ -117,21 +117,21 @@ BUILD SUCCESSFUL
 ## ✅ Phase 6: API Layer Refactoring (완료)
 **수정된 파일: 1개**
 
-- ✅ `voice/controller/RagVoiceController.java` - Clean Architecture로 리팩토링 완료
-  - `RagVoicePipelineService` → `VoicePipelineUseCase` 인터페이스 사용
+- ✅ `application/controller/DialogueController.java` - Clean Architecture로 리팩토링 완료
+  - `DialoguePipelineService` → `DialoguePipelineUseCase` 인터페이스 사용
   - 도메인 Port에 의존 (Infrastructure 의존성 제거)
   - 메서드 호출: `runPipeline()` → `executeStreaming()`
   - 메서드 호출: `runPipelineAudio()` → `executeAudioStreaming()`
   - Request DTO에서 `text` 추출하여 Use Case 호출
 
 **API 엔드포인트 (변경 없음):**
-- `POST /rag/voice/sse` - SSE 스트리밍 (Base64 인코딩 오디오)
-- `POST /rag/voice/audio` - 오디오 바이너리 (WAV)
-- `POST /rag/voice/audio/wav` - 오디오 바이너리 (WAV)
-- `POST /rag/voice/audio/mp3` - 오디오 바이너리 (MP3)
+- `POST /rag/dialogue/sse` - SSE 스트리밍 (Base64 인코딩 오디오)
+- `POST /rag/dialogue/audio` - 오디오 바이너리 (WAV)
+- `POST /rag/dialogue/audio/wav` - 오디오 바이너리 (WAV)
+- `POST /rag/dialogue/audio/mp3` - 오디오 바이너리 (MP3)
 
 **요청/응답 형식 (변경 없음):**
-- Request: `RagVoiceRequest` (text, requestedAt)
+- Request: `RagDialogueRequest` (text, requestedAt)
 - Response: 기존과 동일 (하위 호환성 유지)
 
 ---
@@ -147,13 +147,13 @@ BUILD SUCCESSFUL
 **패키지 구조:**
 ```
 com.study.webflux.voice/  (rag 네임스페이스 제거)
-├── controller/           # RagVoiceController (기존 방식)
-├── service/             # RagVoicePipelineService
+├── controller/           # DialogueController (기존 방식)
+├── service/             # DialoguePipelineService
 ├── client/              # LLM/TTS 클라이언트
-├── model/               # ConversationMessage, RetrievalResult, RagVoiceRequest
+├── model/               # ConversationMessage, RetrievalResult, RagDialogueRequest
 ├── repository/          # ConversationHistoryRepository
-├── config/              # RagVoiceProperties, RedisConfig, WebConfig
-└── common/              # VoiceConstants
+├── config/              # RagDialogueProperties, RedisConfig, WebConfig
+└── common/              # DialogueConstants
 ```
 
 **실행 설정:**
@@ -164,11 +164,11 @@ com.study.webflux.voice/  (rag 네임스페이스 제거)
 **분리 작업:**
 1. ✅ 새 Gradle 모듈 생성
 2. ✅ voice/ 패키지 전체 이동
-3. ✅ 패키지 네임스페이스 변경 (`com.study.webflux.rag.voice` → `com.study.webflux.voice`)
+3. ✅ 패키지 네임스페이스 변경 (`com.study.webflux.rag.dialogue` → `com.study.webflux.voice`)
 4. ✅ 독립 Application 클래스 생성
 5. ✅ 독립 설정 파일 생성
 6. ✅ webflux-rag에서 voice/ 삭제
-7. ✅ 필요한 공통 클래스 복사 (RagVoiceRequest, RagVoiceProperties, VoiceConstants)
+7. ✅ 필요한 공통 클래스 복사 (RagDialogueRequest, RagDialogueProperties, DialogueConstants)
 8. ✅ 빌드 검증 완료
 
 **목적:**
@@ -191,7 +191,7 @@ webflux-rag/
 │   └── service/                - PromptBuilder, SentenceAssembler
 │
 ├── application/                ✅ 완료 (Phase 5)
-│   └── service/                - VoicePipelineService (Use Case 구현)
+│   └── service/                - DialoguePipelineService (Use Case 구현)
 │
 ├── infrastructure/             ✅ 완료
 │   ├── adapter/
@@ -243,7 +243,7 @@ public TtsPort ttsPort(WebClient.Builder builder, SupertoneConfig config, Voice 
 3. ✅ 기존 코드와 병행 사용 가능
 
 ### 점진적 마이그레이션 옵션
-1. **Option A**: 새로운 `VoicePipelineService` 구현하고 기존 컨트롤러 연결
+1. **Option A**: 새로운 `DialoguePipelineService` 구현하고 기존 컨트롤러 연결
 2. **Option B**: 기존 코드에서 새로운 Port 인터페이스만 활용
 3. **Option C**: 전체 API 레이어 리팩토링 후 기존 코드 삭제
 
@@ -299,13 +299,13 @@ void testOpenAiLlmAdapter() {
 ## 🧪 테스트 완료
 
 **생성된 테스트 파일 (3개):**
-1. `VoicePipelineServiceTest.java` - Application Layer (5 tests)
+1. `DialoguePipelineServiceTest.java` - Application Layer (5 tests)
    - Base64 인코딩 스트림 테스트
    - 원본 오디오 바이트 스트림 테스트
    - RAG 컨텍스트 처리 테스트
    - 다중 문장 처리 테스트
 
-2. `VoiceControllerTest.java` - API Layer (6 tests)
+2. `DialogueControllerTest.java` - API Layer (6 tests)
    - SSE 엔드포인트 테스트
    - WAV/MP3 오디오 엔드포인트 테스트
    - 입력 검증 테스트
@@ -323,7 +323,7 @@ BUILD SUCCESSFUL ✅
 ```
 
 **삭제된 레거시 테스트:**
-- `voice/controller/RagVoiceControllerTest.java`
+- `application/controller/DialogueControllerTest.java`
 - `voice/client/FakeTtsStreamingClient.java`
 - `voice/client/FakeLlmStreamingClient.java`
 

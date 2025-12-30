@@ -9,15 +9,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import com.study.webflux.rag.application.monitoring.VoicePipelineMonitor;
-import com.study.webflux.rag.application.monitoring.VoicePipelineStage;
-import com.study.webflux.rag.application.monitoring.VoicePipelineTracker;
+import com.study.webflux.rag.application.monitoring.DialoguePipelineMonitor;
+import com.study.webflux.rag.application.monitoring.DialoguePipelineStage;
+import com.study.webflux.rag.application.monitoring.DialoguePipelineTracker;
 import com.study.webflux.rag.domain.model.conversation.ConversationContext;
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
 import com.study.webflux.rag.domain.model.llm.CompletionRequest;
 import com.study.webflux.rag.domain.model.llm.Message;
 import com.study.webflux.rag.domain.model.rag.RetrievalContext;
-import com.study.webflux.rag.domain.port.in.VoicePipelineUseCase;
+import com.study.webflux.rag.domain.port.in.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.port.out.ConversationRepository;
 import com.study.webflux.rag.domain.port.out.LlmPort;
 import com.study.webflux.rag.domain.port.out.RetrievalPort;
@@ -29,24 +29,24 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 @Service
-public class VoicePipelineService implements VoicePipelineUseCase {
+public class DialoguePipelineService implements DialoguePipelineUseCase {
 
-	private static final Logger log = LoggerFactory.getLogger(VoicePipelineService.class);
+	private static final Logger log = LoggerFactory.getLogger(DialoguePipelineService.class);
 
 	private final LlmPort llmPort;
 	private final TtsPort ttsPort;
 	private final RetrievalPort retrievalPort;
 	private final ConversationRepository conversationRepository;
 	private final SentenceAssembler sentenceAssembler;
-	private final VoicePipelineMonitor pipelineMonitor;
+	private final DialoguePipelineMonitor pipelineMonitor;
 
-	public VoicePipelineService(
+	public DialoguePipelineService(
 		LlmPort llmPort,
 		TtsPort ttsPort,
 		RetrievalPort retrievalPort,
 		ConversationRepository conversationRepository,
 		SentenceAssembler sentenceAssembler,
-		VoicePipelineMonitor pipelineMonitor) {
+		DialoguePipelineMonitor pipelineMonitor) {
 		this.llmPort = llmPort;
 		this.ttsPort = ttsPort;
 		this.retrievalPort = retrievalPort;
@@ -63,10 +63,10 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 
 	@Override
 	public Flux<byte[]> executeAudioStreaming(String text) {
-		VoicePipelineTracker tracker = pipelineMonitor.create(text);
+		DialoguePipelineTracker tracker = pipelineMonitor.create(text);
 
 		Mono<Void> ttsWarmup = tracker.traceMono(
-				VoicePipelineStage.TTS_PREPARATION,
+				DialoguePipelineStage.TTS_PREPARATION,
 				() -> ttsPort.prepare()
 					.doOnError(error -> log.warn("Pipeline {} TTS warmup failed", tracker.pipelineId(), error))
 					.onErrorResume(error -> Mono.empty())
@@ -75,12 +75,12 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 
 		ttsWarmup.subscribe();
 
-		Mono<ConversationTurn> queryTurn = tracker.traceMono(VoicePipelineStage.QUERY_PERSISTENCE, () -> saveQuery(text));
+		Mono<ConversationTurn> queryTurn = tracker.traceMono(DialoguePipelineStage.QUERY_PERSISTENCE, () -> saveQuery(text));
 
 		Mono<RetrievalContext> retrievalContext = queryTurn
-			.flatMap(turn -> tracker.traceMono(VoicePipelineStage.RETRIEVAL, () -> retrievalPort.retrieve(text, 3)))
+			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.RETRIEVAL, () -> retrievalPort.retrieve(text, 3)))
 			.doOnNext(context -> tracker.recordStageAttribute(
-				VoicePipelineStage.RETRIEVAL,
+				DialoguePipelineStage.RETRIEVAL,
 				"documentCount",
 				context.documentCount()
 			));
@@ -92,23 +92,23 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 				ConversationTurn currentTurn = tuple.getT3();
 
 				return tracker.traceMono(
-					VoicePipelineStage.PROMPT_BUILDING,
+					DialoguePipelineStage.PROMPT_BUILDING,
 					() -> Mono.fromCallable(() -> buildMessages(context, conversationContext, currentTurn.query()))
 				).flatMapMany(messages -> {
 					CompletionRequest request = CompletionRequest.withMessages(messages, "gpt-4o-mini", true);
-					tracker.recordStageAttribute(VoicePipelineStage.LLM_COMPLETION, "model", request.model());
-					return tracker.traceFlux(VoicePipelineStage.LLM_COMPLETION, () -> llmPort.streamCompletion(request));
+					tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION, "model", request.model());
+					return tracker.traceFlux(DialoguePipelineStage.LLM_COMPLETION, () -> llmPort.streamCompletion(request));
 				});
 			})
 			.subscribeOn(Schedulers.boundedElastic())
-			.doOnNext(token -> tracker.incrementStageCounter(VoicePipelineStage.LLM_COMPLETION, "tokenCount", 1));
+			.doOnNext(token -> tracker.incrementStageCounter(DialoguePipelineStage.LLM_COMPLETION, "tokenCount", 1));
 
 		Flux<String> sentences = tracker.traceFlux(
-				VoicePipelineStage.SENTENCE_ASSEMBLY,
+				DialoguePipelineStage.SENTENCE_ASSEMBLY,
 				() -> sentenceAssembler.assemble(llmTokens)
 			)
 			.doOnNext(sentence -> {
-				tracker.incrementStageCounter(VoicePipelineStage.SENTENCE_ASSEMBLY, "sentenceCount", 1);
+				tracker.incrementStageCounter(DialoguePipelineStage.SENTENCE_ASSEMBLY, "sentenceCount", 1);
 				tracker.recordLlmOutput(sentence);
 			})
 			.share();
@@ -142,11 +142,11 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 		});
 
 		Flux<byte[]> audioStream = tracker.traceFlux(
-				VoicePipelineStage.TTS_SYNTHESIS,
+				DialoguePipelineStage.TTS_SYNTHESIS,
 				() -> audioFlux
 			)
 			.doOnNext(chunk -> {
-				tracker.incrementStageCounter(VoicePipelineStage.TTS_SYNTHESIS, "audioChunks", 1);
+				tracker.incrementStageCounter(DialoguePipelineStage.TTS_SYNTHESIS, "audioChunks", 1);
 				tracker.markResponseEmission();
 			});
 

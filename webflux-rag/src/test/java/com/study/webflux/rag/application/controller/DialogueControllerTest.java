@@ -13,109 +13,109 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
-import com.study.webflux.rag.application.dto.RagVoiceRequest;
-import com.study.webflux.rag.domain.port.in.VoicePipelineUseCase;
+import com.study.webflux.rag.application.dto.RagDialogueRequest;
+import com.study.webflux.rag.domain.port.in.DialoguePipelineUseCase;
 
 import reactor.core.publisher.Flux;
 
-@WebFluxTest(VoiceController.class)
-class VoiceControllerTest {
+@WebFluxTest(DialogueController.class)
+class DialogueControllerTest {
 
 	@Autowired
 	private WebTestClient webTestClient;
 
 	@MockBean
-	private VoicePipelineUseCase voicePipelineUseCase;
+	private DialoguePipelineUseCase dialoguePipelineUseCase;
 
 	@Test
-	void ragVoiceStream_shouldReturnSSEStream() {
+	void ragDialogueStream_shouldReturnSSEStream() {
 		String testText = "Hello world";
-		RagVoiceRequest request = new RagVoiceRequest(testText, Instant.now());
+		RagDialogueRequest request = new RagDialogueRequest(testText, Instant.now());
 
 		String base64Audio = Base64.getEncoder().encodeToString("audio-data".getBytes());
 
-		when(voicePipelineUseCase.executeStreaming(eq(testText)))
+		when(dialoguePipelineUseCase.executeStreaming(eq(testText)))
 			.thenReturn(Flux.just(base64Audio));
 
 		webTestClient.post()
-			.uri("/rag/voice/sse")
+			.uri("/rag/dialogue/sse")
 			.contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(request)
 			.exchange()
 			.expectStatus().isOk();
 
-		verify(voicePipelineUseCase).executeStreaming(testText);
+		verify(dialoguePipelineUseCase).executeStreaming(testText);
 	}
 
 	@Test
-	void ragVoiceAudioWav_shouldReturnWavAudio() {
+	void ragDialogueAudioWav_shouldReturnWavAudio() {
 		String testText = "Test audio";
-		RagVoiceRequest request = new RagVoiceRequest(testText, Instant.now());
+		RagDialogueRequest request = new RagDialogueRequest(testText, Instant.now());
 
 		byte[] audioBytes = "wav-audio-data".getBytes();
 
-		when(voicePipelineUseCase.executeAudioStreaming(eq(testText)))
+		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText)))
 			.thenReturn(Flux.just(audioBytes));
 
 		webTestClient.post()
-			.uri("/rag/voice/audio/wav")
+			.uri("/rag/dialogue/audio/wav")
 			.contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(request)
 			.exchange()
 			.expectStatus().isOk()
 			.expectHeader().contentType("audio/wav");
 
-		verify(voicePipelineUseCase).executeAudioStreaming(testText);
+		verify(dialoguePipelineUseCase).executeAudioStreaming(testText);
 	}
 
 	@Test
-	void ragVoiceAudioMp3_shouldReturnMp3Audio() {
+	void ragDialogueAudioMp3_shouldReturnMp3Audio() {
 		String testText = "Test MP3";
-		RagVoiceRequest request = new RagVoiceRequest(testText, Instant.now());
+		RagDialogueRequest request = new RagDialogueRequest(testText, Instant.now());
 
 		byte[] audioBytes = "mp3-audio-data".getBytes();
 
-		when(voicePipelineUseCase.executeAudioStreaming(eq(testText)))
+		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText)))
 			.thenReturn(Flux.just(audioBytes));
 
 		webTestClient.post()
-			.uri("/rag/voice/audio/mp3")
+			.uri("/rag/dialogue/audio/mp3")
 			.contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(request)
 			.exchange()
 			.expectStatus().isOk()
 			.expectHeader().contentType("audio/mpeg");
 
-		verify(voicePipelineUseCase).executeAudioStreaming(testText);
+		verify(dialoguePipelineUseCase).executeAudioStreaming(testText);
 	}
 
 	@Test
-	void ragVoiceAudio_shouldDelegateToWav() {
+	void ragDialogueAudio_shouldDelegateToWav() {
 		String testText = "Default audio";
-		RagVoiceRequest request = new RagVoiceRequest(testText, Instant.now());
+		RagDialogueRequest request = new RagDialogueRequest(testText, Instant.now());
 
 		byte[] audioBytes = "default-audio".getBytes();
 
-		when(voicePipelineUseCase.executeAudioStreaming(eq(testText)))
+		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText)))
 			.thenReturn(Flux.just(audioBytes));
 
 		webTestClient.post()
-			.uri("/rag/voice/audio")
+			.uri("/rag/dialogue/audio")
 			.contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(request)
 			.exchange()
 			.expectStatus().isOk()
 			.expectHeader().contentType("audio/wav");
 
-		verify(voicePipelineUseCase).executeAudioStreaming(testText);
+		verify(dialoguePipelineUseCase).executeAudioStreaming(testText);
 	}
 
 	@Test
-	void ragVoiceStream_withBlankText_shouldReturnBadRequest() {
-		RagVoiceRequest request = new RagVoiceRequest("", Instant.now());
+	void ragDialogueStream_withBlankText_shouldReturnBadRequest() {
+		RagDialogueRequest request = new RagDialogueRequest("", Instant.now());
 
 		webTestClient.post()
-			.uri("/rag/voice/sse")
+			.uri("/rag/dialogue/sse")
 			.contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(request)
 			.exchange()
@@ -123,11 +123,11 @@ class VoiceControllerTest {
 	}
 
 	@Test
-	void ragVoiceStream_withNullTimestamp_shouldReturnBadRequest() {
-		RagVoiceRequest request = new RagVoiceRequest("test", null);
+	void ragDialogueStream_withNullTimestamp_shouldReturnBadRequest() {
+		RagDialogueRequest request = new RagDialogueRequest("test", null);
 
 		webTestClient.post()
-			.uri("/rag/voice/sse")
+			.uri("/rag/dialogue/sse")
 			.contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(request)
 			.exchange()

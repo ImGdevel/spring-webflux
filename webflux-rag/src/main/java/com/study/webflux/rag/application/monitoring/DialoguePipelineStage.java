@@ -1,6 +1,6 @@
 package com.study.webflux.rag.application.monitoring;
 
-public enum VoicePipelineStage {
+public enum DialoguePipelineStage {
 	QUERY_PERSISTENCE,
 	RETRIEVAL,
 	PROMPT_BUILDING,

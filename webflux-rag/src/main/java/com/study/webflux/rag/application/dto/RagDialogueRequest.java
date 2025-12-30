@@ -5,7 +5,7 @@ import java.time.Instant;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-public record RagVoiceRequest(
+public record RagDialogueRequest(
 	@NotBlank String text,
 	@NotNull Instant requestedAt
 ) {

@@ -1,7 +1,7 @@
 package com.study.webflux.rag.application.controller;
 
-import com.study.webflux.rag.application.dto.RagVoiceRequest;
-import com.study.webflux.rag.domain.port.in.VoicePipelineUseCase;
+import com.study.webflux.rag.application.dto.RagDialogueRequest;
+import com.study.webflux.rag.domain.port.in.DialoguePipelineUseCase;
 import jakarta.validation.Valid;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
@@ -16,36 +16,36 @@ import reactor.core.publisher.Flux;
 
 @Validated
 @RestController
-@RequestMapping("/rag/voice")
-public class VoiceController {
+@RequestMapping("/rag/dialogue")
+public class DialogueController {
 
-	private final VoicePipelineUseCase voicePipelineUseCase;
+	private final DialoguePipelineUseCase dialoguePipelineUseCase;
 
-	public VoiceController(VoicePipelineUseCase voicePipelineUseCase) {
-		this.voicePipelineUseCase = voicePipelineUseCase;
+	public DialogueController(DialoguePipelineUseCase dialoguePipelineUseCase) {
+		this.dialoguePipelineUseCase = dialoguePipelineUseCase;
 	}
 
 	@PostMapping(path = "/sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-	public Flux<String> ragVoiceStream(@Valid @RequestBody RagVoiceRequest request) {
-		return voicePipelineUseCase.executeStreaming(request.text());
+	public Flux<String> ragDialogueStream(@Valid @RequestBody RagDialogueRequest request) {
+		return dialoguePipelineUseCase.executeStreaming(request.text());
 	}
 
 	@PostMapping(path = "/audio/wav", produces = "audio/wav")
-	public Flux<DataBuffer> ragVoiceAudioWav(@Valid @RequestBody RagVoiceRequest request) {
+	public Flux<DataBuffer> ragDialogueAudioWav(@Valid @RequestBody RagDialogueRequest request) {
 		DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
-		return voicePipelineUseCase.executeAudioStreaming(request.text())
+		return dialoguePipelineUseCase.executeAudioStreaming(request.text())
 			.map(bufferFactory::wrap);
 	}
 
 	@PostMapping(path = "/audio/mp3", produces = "audio/mpeg")
-	public Flux<DataBuffer> ragVoiceAudioMp3(@Valid @RequestBody RagVoiceRequest request) {
+	public Flux<DataBuffer> ragDialogueAudioMp3(@Valid @RequestBody RagDialogueRequest request) {
 		DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
-		return voicePipelineUseCase.executeAudioStreaming(request.text())
+		return dialoguePipelineUseCase.executeAudioStreaming(request.text())
 			.map(bufferFactory::wrap);
 	}
 
 	@PostMapping(path = "/audio", produces = "audio/wav")
-	public Flux<DataBuffer> ragVoiceAudio(@Valid @RequestBody RagVoiceRequest request) {
-		return ragVoiceAudioWav(request);
+	public Flux<DataBuffer> ragDialogueAudio(@Valid @RequestBody RagDialogueRequest request) {
+		return ragDialogueAudioWav(request);
 	}
 }

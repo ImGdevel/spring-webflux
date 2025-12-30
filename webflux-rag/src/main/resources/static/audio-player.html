@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAG Voice Auto Player</title>
+    <title>RAG Dialogue Auto Player</title>
     <style>
         * {
             margin: 0;
@@ -128,7 +128,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎤 RAG Voice Auto Player</h1>
+        <h1>🎤 RAG Dialogue Auto Player</h1>
         <p class="subtitle">음성이 스트리밍되면 자동으로 재생됩니다</p>
 
         <div class="input-group">
@@ -177,7 +177,7 @@
             showStatus('RAG 파이프라인 실행 중...', 'info');
 
             try {
-                const response = await fetch('http://localhost:8081/rag/voice/audio', {
+                const response = await fetch('http://localhost:8081/rag/dialogue/audio', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

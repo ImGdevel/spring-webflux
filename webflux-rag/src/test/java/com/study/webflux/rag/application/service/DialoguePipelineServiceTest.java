@@ -12,14 +12,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.study.webflux.rag.application.monitoring.VoicePipelineMonitor;
+import com.study.webflux.rag.application.monitoring.DialoguePipelineMonitor;
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
 import com.study.webflux.rag.domain.model.llm.CompletionRequest;
 import com.study.webflux.rag.domain.model.rag.RetrievalContext;
 import com.study.webflux.rag.domain.model.rag.RetrievalDocument;
 import com.study.webflux.rag.domain.port.out.ConversationRepository;
 import com.study.webflux.rag.domain.port.out.LlmPort;
-import com.study.webflux.rag.domain.port.out.PromptTemplatePort;
 import com.study.webflux.rag.domain.port.out.RetrievalPort;
 import com.study.webflux.rag.domain.port.out.TtsPort;
 import com.study.webflux.rag.domain.service.SentenceAssembler;
@@ -29,7 +28,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 @ExtendWith(MockitoExtension.class)
-class VoicePipelineServiceTest {
+class DialoguePipelineServiceTest {
 
 	@Mock
 	private LlmPort llmPort;
@@ -43,25 +42,22 @@ class VoicePipelineServiceTest {
 	@Mock
 	private ConversationRepository conversationRepository;
 
-	@Mock
-	private PromptTemplatePort promptTemplate;
-
 	private SentenceAssembler sentenceAssembler;
 
-	private VoicePipelineService service;
-	private VoicePipelineMonitor pipelineMonitor;
+	private DialoguePipelineService service;
+	private DialoguePipelineMonitor pipelineMonitor;
 
 	@BeforeEach
 	void setUp() {
 		sentenceAssembler = new SentenceAssembler();
-		pipelineMonitor = new VoicePipelineMonitor(summary -> {});
+		pipelineMonitor = new DialoguePipelineMonitor(summary -> {});
 		when(ttsPort.prepare()).thenReturn(Mono.empty());
-		service = new VoicePipelineService(
+		when(conversationRepository.findRecent(anyInt())).thenReturn(Flux.empty());
+		service = new DialoguePipelineService(
 			llmPort,
 			ttsPort,
 			retrievalPort,
 			conversationRepository,
-			promptTemplate,
 			sentenceAssembler,
 			pipelineMonitor
 		);
@@ -80,8 +76,6 @@ class VoicePipelineServiceTest {
 			.thenReturn(Mono.just(turn));
 		when(retrievalPort.retrieve(eq(testText), eq(3)))
 			.thenReturn(Mono.just(emptyContext));
-		when(promptTemplate.buildPrompt(any(RetrievalContext.class)))
-			.thenReturn("Test prompt");
 		when(llmPort.streamCompletion(any(CompletionRequest.class)))
 			.thenReturn(Flux.just("Hello", " world", "."));
 		when(ttsPort.streamSynthesize(anyString()))
@@ -91,9 +85,8 @@ class VoicePipelineServiceTest {
 			.expectNext(expectedBase64)
 			.verifyComplete();
 
-		verify(conversationRepository).save(any(ConversationTurn.class));
+		verify(conversationRepository, atLeastOnce()).save(any(ConversationTurn.class));
 		verify(retrievalPort).retrieve(testText, 3);
-		verify(promptTemplate).buildPrompt(any(RetrievalContext.class));
 		verify(llmPort).streamCompletion(any(CompletionRequest.class));
 		verify(ttsPort).streamSynthesize("Hello world.");
 	}
@@ -112,8 +105,6 @@ class VoicePipelineServiceTest {
 			.thenReturn(Mono.just(turn));
 		when(retrievalPort.retrieve(eq(testText), eq(3)))
 			.thenReturn(Mono.just(context));
-		when(promptTemplate.buildPrompt(any(RetrievalContext.class)))
-			.thenReturn("Augmented prompt");
 		when(llmPort.streamCompletion(any(CompletionRequest.class)))
 			.thenReturn(Flux.just("First", " sentence", ".", " Second", " sentence", "."));
 		when(ttsPort.streamSynthesize("First sentence."))
@@ -142,8 +133,6 @@ class VoicePipelineServiceTest {
 			.thenReturn(Mono.just(turn));
 		when(retrievalPort.retrieve(eq(testText), eq(3)))
 			.thenReturn(Mono.just(emptyContext));
-		when(promptTemplate.buildPrompt(any(RetrievalContext.class)))
-			.thenReturn("Default prompt");
 		when(llmPort.streamCompletion(any(CompletionRequest.class)))
 			.thenReturn(Flux.just("Response", "."));
 		when(ttsPort.streamSynthesize(anyString()))
@@ -153,7 +142,6 @@ class VoicePipelineServiceTest {
 			.expectNext(audioBytes)
 			.verifyComplete();
 
-		verify(promptTemplate).buildPrompt(emptyContext);
 	}
 
 	@Test
@@ -170,8 +158,6 @@ class VoicePipelineServiceTest {
 			.thenReturn(Mono.just(turn));
 		when(retrievalPort.retrieve(eq(testText), eq(3)))
 			.thenReturn(Mono.just(emptyContext));
-		when(promptTemplate.buildPrompt(any(RetrievalContext.class)))
-			.thenReturn("Prompt");
 		when(llmPort.streamCompletion(any(CompletionRequest.class)))
 			.thenReturn(Flux.just("첫", "번째", ".", " 두", "번째", "!", " 세", "번째", "?"));
 		when(ttsPort.streamSynthesize("첫번째."))

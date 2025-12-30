@@ -1,4 +1,4 @@
-# RAG Voice Pipeline 테스트 클라이언트 가이드
+# RAG Dialogue Pipeline 테스트 클라이언트 가이드
 
 ## 시작하기
 
@@ -62,7 +62,7 @@ http://localhost:8081/
 ## API 직접 호출 (curl)
 
 ```bash
-curl -X POST http://localhost:8081/rag/voice/sse \
+curl -X POST http://localhost:8081/rag/dialogue/sse \
   -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" \
   -d '{

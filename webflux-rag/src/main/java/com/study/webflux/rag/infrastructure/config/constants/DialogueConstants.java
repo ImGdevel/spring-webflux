@@ -1,6 +1,6 @@
 package com.study.webflux.rag.infrastructure.config.constants;
 
-public class VoiceConstants {
+public class DialogueConstants {
 
 	public static class Supertone {
 		public static final String BASE_URL = "https://supertoneapi.com";

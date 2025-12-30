@@ -11,9 +11,9 @@
 ```
 voice/
 ├── controller/
-│   └── RagVoiceController.java          # 컨트롤러
+│   └── DialogueController.java          # 컨트롤러
 ├── service/
-│   ├── RagVoicePipelineService.java     # 파이프라인 서비스 (모든 로직)
+│   ├── DialoguePipelineService.java     # 파이프라인 서비스 (모든 로직)
 │   ├── SentenceAssemblyService.java     # 문장 조립 (도메인 로직)
 │   └── FakeRagRetrievalService.java     # Mock Retrieval
 ├── client/
@@ -22,18 +22,18 @@ voice/
 │   ├── TtsStreamingClient.java          # TTS 클라이언트 인터페이스
 │   └── SupertoneTtsStreamingClient.java # TTS 구현
 ├── model/
-│   ├── RagVoiceRequest.java             # API 요청 모델
+│   ├── RagDialogueRequest.java             # API 요청 모델
 │   ├── ConversationMessage.java         # 대화 메시지
 │   └── RetrievalResult.java             # 검색 결과
 ├── repository/
 │   └── ConversationHistoryRepository.java # 대화 저장소
 └── config/
-    └── RagVoiceProperties.java          # 설정
+    └── RagDialogueProperties.java          # 설정
 
 **문제점:**
 ❌ 계층 분리 불명확 (모든 것이 voice 패키지에 혼재)
 ❌ 의존성 방향 위반 (서비스가 구체 클라이언트에 의존)
-❌ 단일 책임 원칙 위반 (RagVoicePipelineService가 모든 역할 수행)
+❌ 단일 책임 원칙 위반 (DialoguePipelineService가 모든 역할 수행)
 ❌ 확장성 부족 (LLM 프로바이더 교체 어려움)
 ❌ 하드코딩된 프롬프트
 ❌ 테스트 어려움
@@ -63,7 +63,7 @@ webflux-rag/
 │   │       └── ConversationContext.java # 대화 컨텍스트
 │   ├── port/
 │   │   ├── in/                          # Inbound Port (Use Cases)
-│   │   │   └── VoicePipelineUseCase.java
+│   │   │   └── DialoguePipelineUseCase.java
 │   │   └── out/                         # Outbound Port (추상화)
 │   │       ├── LlmPort.java             # LLM 추상화
 │   │       ├── TtsPort.java             # TTS 추상화
@@ -76,7 +76,7 @@ webflux-rag/
 │
 ├── application/                         # 🟩 애플리케이션 레이어
 │   └── service/
-│       └── VoicePipelineService.java    # Use Case 구현
+│       └── DialoguePipelineService.java    # Use Case 구현
 │
 ├── infrastructure/                      # 🟨 인프라 레이어
 │   ├── adapter/
@@ -121,9 +121,9 @@ webflux-rag/
 
 ### Before: 직접 의존성
 ```
-RagVoiceController
+DialogueController
     ↓ (직접 의존)
-RagVoicePipelineService
+DialoguePipelineService
     ↓ (직접 의존)
 FakeLlmStreamingClient ← 교체 어려움
     ↓
@@ -132,11 +132,11 @@ SupertoneTtsStreamingClient ← 교체 어려움
 
 ### After: 의존성 역전
 ```
-RagVoiceController
+DialogueController
     ↓ (인터페이스 의존)
-VoicePipelineUseCase (Port)
+DialoguePipelineUseCase (Port)
     ↑ (구현)
-VoicePipelineService (Application)
+DialoguePipelineService (Application)
     ↓ (인터페이스 의존)
 LlmPort, TtsPort, RetrievalPort (Domain Ports)
     ↑ (구현)
@@ -155,8 +155,8 @@ OpenAiLlmAdapter, SupertoneTtsAdapter, ... (Infrastructure)
 ### 1. Single Responsibility Principle (SRP)
 **Before:**
 ```java
-// RagVoicePipelineService가 4가지 책임 수행
-class RagVoicePipelineService {
+// DialoguePipelineService가 4가지 책임 수행
+class DialoguePipelineService {
     // 1. 대화 저장
     // 2. RAG 검색
     // 3. LLM 호출
@@ -168,7 +168,7 @@ class RagVoicePipelineService {
 **After:**
 ```java
 // 각 클래스가 단일 책임
-class VoicePipelineService { /* 오케스트레이션만 */ }
+class DialoguePipelineService { /* 오케스트레이션만 */ }
 class OpenAiLlmAdapter { /* LLM 통신만 */ }
 class SupertoneTtsAdapter { /* TTS 통신만 */ }
 class SentenceAssembler { /* 문장 조립만 */ }
@@ -178,8 +178,8 @@ class PromptBuilder { /* 프롬프트 구성만 */ }
 ### 2. Open-Closed Principle (OCP)
 **Before:**
 ```java
-// LLM 프로바이더 변경 시 RagVoicePipelineService 수정 필요
-class RagVoicePipelineService {
+// LLM 프로바이더 변경 시 DialoguePipelineService 수정 필요
+class DialoguePipelineService {
     private FakeLlmStreamingClient llmClient; // 하드코딩
 }
 ```
@@ -203,7 +203,7 @@ class GeminiLlmAdapter implements LlmPort { ... }
 **After:**
 ```java
 // 모든 LlmPort 구현체는 동일하게 동작
-VoicePipelineService service = new VoicePipelineService(
+DialoguePipelineService service = new DialoguePipelineService(
     openAiAdapter,  // LlmPort
     // OR
     claudeAdapter,  // LlmPort
@@ -233,7 +233,7 @@ interface RetrievalPort {
 **Before:**
 ```java
 // 고수준 모듈이 저수준 모듈에 의존
-class RagVoicePipelineService {
+class DialoguePipelineService {
     private FakeLlmStreamingClient llmClient; // 구체 클래스 의존
 }
 ```
@@ -241,7 +241,7 @@ class RagVoicePipelineService {
 **After:**
 ```java
 // 고수준, 저수준 모두 추상화(Port)에 의존
-class VoicePipelineService {
+class DialoguePipelineService {
     private final LlmPort llmPort; // 인터페이스 의존
 }
 
@@ -256,7 +256,7 @@ class OpenAiLlmAdapter implements LlmPort { ... }
 
 **Before:**
 1. `FakeLlmStreamingClient` 수정 또는 교체
-2. `RagVoicePipelineService` 수정
+2. `DialoguePipelineService` 수정
 3. 기존 코드 테스트 재수행
 
 **After:**
@@ -268,7 +268,7 @@ class OpenAiLlmAdapter implements LlmPort { ... }
 
 **Before:**
 1. `SupertoneTtsStreamingClient` 수정
-2. `RagVoicePipelineService` 수정 가능성
+2. `DialoguePipelineService` 수정 가능성
 
 **After:**
 1. 새 Adapter 작성 (예: `ElevenLabsTtsAdapter`)
@@ -284,7 +284,7 @@ class OpenAiLlmAdapter implements LlmPort { ... }
 @Test
 void testPipeline() {
     // 구체 클래스 의존으로 Mock 어려움
-    RagVoicePipelineService service = new RagVoicePipelineService(
+    DialoguePipelineService service = new DialoguePipelineService(
         fakeLlmClient,  // 교체 어려움
         ttsClient,      // 교체 어려움
         repository
@@ -300,7 +300,7 @@ void testPipeline() {
     LlmPort mockLlm = mock(LlmPort.class);
     TtsPort mockTts = mock(TtsPort.class);
 
-    VoicePipelineService service = new VoicePipelineService(
+    DialoguePipelineService service = new DialoguePipelineService(
         mockLlm,
         mockTts,
         mockRetrieval,
@@ -347,8 +347,8 @@ resources/templates/rag-augmented-prompt.txt:
 
 ### Phase 6 완료 상태
 ```
-✅ Controller: 새 구현 사용 (VoicePipelineUseCase)
-✅ Application: 새 서비스 작동 (VoicePipelineService)
+✅ Controller: 새 구현 사용 (DialoguePipelineUseCase)
+✅ Application: 새 서비스 작동 (DialoguePipelineService)
 ✅ Domain: 모든 모델 & 포트 정의
 ✅ Infrastructure: 모든 어댑터 구현
 🔵 Legacy: 기존 voice/ 패키지 유지 (학습/비교)

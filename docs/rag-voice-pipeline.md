@@ -1,4 +1,4 @@
-# RAG Voice Pipeline
+# RAG Dialogue Pipeline
 
 ## Architecture
 
@@ -8,7 +8,7 @@ Text Query → RAG Retrieval → LLM (with context) → Sentence Assembly → TT
 
 ## Flow
 
-1. **Request**: Client sends text query via POST /rag/voice/sse
+1. **Request**: Client sends text query via POST /rag/dialogue/sse
 2. **Save**: Store query in conversation history
 3. **Retrieve**: Find top 3 similar past conversations (keyword matching)
 4. **Augment**: Build prompt with retrieved context
@@ -20,10 +20,10 @@ Text Query → RAG Retrieval → LLM (with context) → Sentence Assembly → TT
 ## Components
 
 ### Controller
-- **RagVoiceController**: POST /rag/voice/sse → SSE audio stream
+- **DialogueController**: POST /rag/dialogue/sse → SSE audio stream
 
 ### Services
-- **RagVoicePipelineService**: Orchestrates save → retrieve → LLM → TTS
+- **DialoguePipelineService**: Orchestrates save → retrieve → LLM → TTS
 - **FakeRagRetrievalService**: Keyword-based top-3 search
 - **SentenceAssemblyService**: Buffers tokens to sentences
 

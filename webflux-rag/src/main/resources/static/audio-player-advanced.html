@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAG Voice Player - Advanced</title>
+    <title>RAG Dialogue Player - Advanced</title>
     <style>
         * {
             margin: 0;
@@ -173,7 +173,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎤 RAG Voice Player</h1>
+        <h1>🎤 RAG Dialogue Player</h1>
         <p class="subtitle">오디오 포맷을 선택하고 음성을 생성하세요</p>
 
         <div class="format-selector">
@@ -240,7 +240,7 @@
             showStatus(`${format.toUpperCase()} 포맷으로 RAG 파이프라인 실행 중...`, 'info');
 
             try {
-                const endpoint = `http://localhost:8081/rag/voice/audio/${format}`;
+                const endpoint = `http://localhost:8081/rag/dialogue/audio/${format}`;
 
                 const response = await fetch(endpoint, {
                     method: 'POST',

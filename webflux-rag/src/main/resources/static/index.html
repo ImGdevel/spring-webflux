@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAG Voice Streaming Player</title>
+    <title>RAG Dialogue Streaming Player</title>
     <style>
         * {
             margin: 0;
@@ -143,7 +143,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎤 RAG Voice Streaming</h1>
+        <h1>🎤 RAG Dialogue Streaming</h1>
         <p class="subtitle">
             Media Source Extensions로 실시간 스트리밍<span class="badge">MP3 ONLY</span>
         </p>
@@ -212,7 +212,7 @@
                         chunks = [];
                         chunkCount = 0;
 
-                        const response = await fetch('http://localhost:8081/rag/voice/audio/mp3', {
+                        const response = await fetch('http://localhost:8081/rag/dialogue/audio/mp3', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',

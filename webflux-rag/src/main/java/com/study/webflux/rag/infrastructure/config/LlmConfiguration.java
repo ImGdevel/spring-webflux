@@ -8,13 +8,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.study.webflux.rag.domain.port.out.LlmPort;
 import com.study.webflux.rag.infrastructure.adapter.llm.OpenAiConfig;
 import com.study.webflux.rag.infrastructure.adapter.llm.OpenAiLlmAdapter;
-import com.study.webflux.rag.infrastructure.config.properties.RagVoiceProperties;
+import com.study.webflux.rag.infrastructure.config.properties.RagDialogueProperties;
 
 @Configuration
 public class LlmConfiguration {
 
 	@Bean
-	public OpenAiConfig openAiConfig(RagVoiceProperties properties) {
+	public OpenAiConfig openAiConfig(RagDialogueProperties properties) {
 		var openai = properties.getOpenai();
 		return new OpenAiConfig(openai.getApiKey(), openai.getBaseUrl(), openai.getModel());
 	}

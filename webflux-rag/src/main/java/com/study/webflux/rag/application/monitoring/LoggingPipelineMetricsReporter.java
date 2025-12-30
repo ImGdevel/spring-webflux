@@ -12,7 +12,7 @@ public class LoggingPipelineMetricsReporter implements PipelineMetricsReporter {
 	private static final Logger log = LoggerFactory.getLogger(LoggingPipelineMetricsReporter.class);
 
 	@Override
-	public void report(VoicePipelineTracker.PipelineSummary summary) {
+	public void report(DialoguePipelineTracker.PipelineSummary summary) {
 		boolean ideaActive = Boolean.parseBoolean(System.getProperty("idea.active", "false"));
 		String stageSummary = formatStages(summary, ideaActive);
 		String llmOutputs = formatOutputs(summary, ideaActive);
@@ -20,7 +20,7 @@ public class LoggingPipelineMetricsReporter implements PipelineMetricsReporter {
 		if (ideaActive) {
 			log.info(
 				"""
-				Voice pipeline %s
+				Dialogue pipeline %s
 				  status=%s duration=%sms firstLatency=%sms lastLatency=%sms
 				  attributes=%s
 				  stages:
@@ -40,7 +40,7 @@ public class LoggingPipelineMetricsReporter implements PipelineMetricsReporter {
 		}
 		else {
 			log.info(
-				"Voice pipeline {} status={} duration={}ms firstLatency={}ms lastLatency={}ms attributes={} stages=[{}] llmResults={}",
+				"Dialogue pipeline {} status={} duration={}ms firstLatency={}ms lastLatency={}ms attributes={} stages=[{}] llmResults={}",
 				summary.pipelineId(),
 				summary.status(),
 				summary.durationMillis(),
@@ -57,7 +57,7 @@ public class LoggingPipelineMetricsReporter implements PipelineMetricsReporter {
 		return latency == null ? "-" : latency.toString();
 	}
 
-	private String formatStages(VoicePipelineTracker.PipelineSummary summary, boolean ideaActive) {
+	private String formatStages(DialoguePipelineTracker.PipelineSummary summary, boolean ideaActive) {
 		var stream = summary.stages().stream()
 			.map(stage -> stage.stage() + ":" + stage.status() + "(" + stage.durationMillis() + "ms, attrs=" + stage.attributes() + ")");
 		if (ideaActive) {
@@ -66,7 +66,7 @@ public class LoggingPipelineMetricsReporter implements PipelineMetricsReporter {
 		return stream.collect(Collectors.joining(", "));
 	}
 
-	private String formatOutputs(VoicePipelineTracker.PipelineSummary summary, boolean ideaActive) {
+	private String formatOutputs(DialoguePipelineTracker.PipelineSummary summary, boolean ideaActive) {
 		if (summary.llmOutputs().isEmpty()) {
 			return "(none)";
 		}

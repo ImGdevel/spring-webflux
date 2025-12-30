@@ -17,13 +17,13 @@ import java.util.function.Supplier;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public class VoicePipelineTracker {
+public class DialoguePipelineTracker {
 
 	private final String pipelineId;
 	private final PipelineMetricsReporter reporter;
 	private final Clock clock;
 	private final Instant startedAt;
-	private final Map<VoicePipelineStage, StageMetric> stageMetrics = new EnumMap<>(VoicePipelineStage.class);
+	private final Map<DialoguePipelineStage, StageMetric> stageMetrics = new EnumMap<>(DialoguePipelineStage.class);
 	private final Map<String, Object> attributes = new ConcurrentHashMap<>();
 	private final AtomicBoolean finished = new AtomicBoolean(false);
 	private final List<String> llmOutputs = new CopyOnWriteArrayList<>();
@@ -31,7 +31,7 @@ public class VoicePipelineTracker {
 	private final AtomicReference<Instant> lastResponseAt = new AtomicReference<>();
 	private volatile Instant finishedAt;
 
-	public VoicePipelineTracker(String inputText, PipelineMetricsReporter reporter, Clock clock) {
+	public DialoguePipelineTracker(String inputText, PipelineMetricsReporter reporter, Clock clock) {
 		this.pipelineId = UUID.randomUUID().toString();
 		this.reporter = Objects.requireNonNull(reporter, "reporter must not be null");
 		this.clock = Objects.requireNonNull(clock, "clock must not be null");
@@ -40,7 +40,7 @@ public class VoicePipelineTracker {
 		recordPipelineAttribute("input.preview", preview(inputText));
 	}
 
-	public <T> Mono<T> traceMono(VoicePipelineStage stage, Supplier<Mono<T>> supplier) {
+	public <T> Mono<T> traceMono(DialoguePipelineStage stage, Supplier<Mono<T>> supplier) {
 		Objects.requireNonNull(supplier, "supplier must not be null");
 		return Mono.defer(() -> {
 			StageMetric metric = stageMetric(stage);
@@ -53,7 +53,7 @@ public class VoicePipelineTracker {
 		});
 	}
 
-	public <T> Flux<T> traceFlux(VoicePipelineStage stage, Supplier<Flux<T>> supplier) {
+	public <T> Flux<T> traceFlux(DialoguePipelineStage stage, Supplier<Flux<T>> supplier) {
 		Objects.requireNonNull(supplier, "supplier must not be null");
 		return Flux.defer(() -> {
 			StageMetric metric = stageMetric(stage);
@@ -79,13 +79,13 @@ public class VoicePipelineTracker {
 		}
 	}
 
-	public void recordStageAttribute(VoicePipelineStage stage, String key, Object value) {
+	public void recordStageAttribute(DialoguePipelineStage stage, String key, Object value) {
 		if (key != null && value != null) {
 			stageMetric(stage).putAttribute(key, value);
 		}
 	}
 
-	public void incrementStageCounter(VoicePipelineStage stage, String key, long delta) {
+	public void incrementStageCounter(DialoguePipelineStage stage, String key, long delta) {
 		stageMetric(stage).incrementAttribute(key, delta);
 	}
 
@@ -105,7 +105,7 @@ public class VoicePipelineTracker {
 		return pipelineId;
 	}
 
-	private StageMetric stageMetric(VoicePipelineStage stage) {
+	private StageMetric stageMetric(DialoguePipelineStage stage) {
 		return stageMetrics.computeIfAbsent(stage, StageMetric::new);
 	}
 
@@ -151,13 +151,13 @@ public class VoicePipelineTracker {
 	}
 
 	private static final class StageMetric {
-		private final VoicePipelineStage stage;
+		private final DialoguePipelineStage stage;
 		private final Map<String, Object> attributes = new ConcurrentHashMap<>();
 		private volatile StageStatus status = StageStatus.PENDING;
 		private volatile Instant startedAt;
 		private volatile Instant finishedAt;
 
-		private StageMetric(VoicePipelineStage stage) {
+		private StageMetric(DialoguePipelineStage stage) {
 			this.stage = stage;
 		}
 
@@ -220,7 +220,7 @@ public class VoicePipelineTracker {
 	}
 
 	public record StageSnapshot(
-		VoicePipelineStage stage,
+		DialoguePipelineStage stage,
 		StageStatus status,
 		Instant startedAt,
 		Instant finishedAt,

@@ -6,22 +6,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-public class VoicePipelineMonitor {
+public class DialoguePipelineMonitor {
 
 	private final PipelineMetricsReporter reporter;
 	private final Clock clock;
 
 	@Autowired
-	public VoicePipelineMonitor(PipelineMetricsReporter reporter) {
+	public DialoguePipelineMonitor(PipelineMetricsReporter reporter) {
 		this(reporter, Clock.systemUTC());
 	}
 
-	VoicePipelineMonitor(PipelineMetricsReporter reporter, Clock clock) {
+	DialoguePipelineMonitor(PipelineMetricsReporter reporter, Clock clock) {
 		this.reporter = reporter;
 		this.clock = clock;
 	}
 
-	public VoicePipelineTracker create(String inputText) {
-		return new VoicePipelineTracker(inputText, reporter, clock);
+	public DialoguePipelineTracker create(String inputText) {
+		return new DialoguePipelineTracker(inputText, reporter, clock);
 	}
 }
