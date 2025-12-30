@@ -42,7 +42,7 @@ public class RagVoicePipelineService {
 	}
 
 	public Flux<String> runPipeline(RagVoiceRequest request) {
-		return repository.save(request.text())
+		return repository.saveQuery(request.text())
 			.flatMap(saved -> retrievalService.retrieve(request.text(), 3))
 			.map(this::buildAugmentedPrompt)
 			.flatMapMany(prompt -> llmClient.streamCompletion(prompt))

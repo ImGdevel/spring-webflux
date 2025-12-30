@@ -1,6 +1,12 @@
 spring:
   application:
     name: webflux-rag
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/ragdb
+    redis:
+      host: localhost
+      port: 6379
 
 server:
   port: 8081
