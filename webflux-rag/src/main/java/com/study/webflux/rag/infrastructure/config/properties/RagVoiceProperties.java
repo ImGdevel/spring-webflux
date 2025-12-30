@@ -31,7 +31,7 @@ public class RagVoiceProperties {
 	public static class OpenAi {
 		private String apiKey;
 		private String baseUrl = "https://api.openai.com/v1";
-		private String model = "gpt-3.5-turbo";
+		private String model = "gpt-4.1-nano";
 
 		public String getApiKey() {
 			return apiKey;
