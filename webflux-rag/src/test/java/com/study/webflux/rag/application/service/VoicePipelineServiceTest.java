@@ -55,6 +55,7 @@ class VoicePipelineServiceTest {
 	void setUp() {
 		sentenceAssembler = new SentenceAssembler();
 		pipelineMonitor = new VoicePipelineMonitor(summary -> {});
+		when(ttsPort.prepare()).thenReturn(Mono.empty());
 		service = new VoicePipelineService(
 			llmPort,
 			ttsPort,

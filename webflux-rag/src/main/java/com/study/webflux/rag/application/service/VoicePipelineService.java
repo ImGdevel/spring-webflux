@@ -2,6 +2,8 @@ package com.study.webflux.rag.application.service;
 
 import java.util.Base64;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.study.webflux.rag.application.monitoring.VoicePipelineMonitor;
@@ -24,6 +26,8 @@ import reactor.core.scheduler.Schedulers;
 
 @Service
 public class VoicePipelineService implements VoicePipelineUseCase {
+
+	private static final Logger log = LoggerFactory.getLogger(VoicePipelineService.class);
 
 	private final LlmPort llmPort;
 	private final TtsPort ttsPort;
@@ -60,6 +64,16 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 	public Flux<byte[]> executeAudioStreaming(String text) {
 		VoicePipelineTracker tracker = pipelineMonitor.create(text);
 
+		Mono<Void> ttsWarmup = tracker.traceMono(
+				VoicePipelineStage.TTS_PREPARATION,
+				() -> ttsPort.prepare()
+					.doOnError(error -> log.warn("Pipeline {} TTS warmup failed", tracker.pipelineId(), error))
+					.onErrorResume(error -> Mono.empty())
+			)
+			.cache();
+
+		ttsWarmup.subscribe();
+
 		Mono<RetrievalContext> retrievalContext = tracker.traceMono(VoicePipelineStage.QUERY_PERSISTENCE, () -> saveQuery(text))
 			.flatMap(turn -> tracker.traceMono(VoicePipelineStage.RETRIEVAL, () -> retrievalPort.retrieve(text, 3)))
 			.doOnNext(context -> tracker.recordStageAttribute(
@@ -94,7 +108,7 @@ public class VoicePipelineService implements VoicePipelineUseCase {
 				VoicePipelineStage.TTS_SYNTHESIS,
 				() -> sentences
 					.publishOn(Schedulers.boundedElastic())
-					.concatMap(sentence -> ttsPort.streamSynthesize(sentence))
+					.concatMap(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence)))
 			)
 			.doOnNext(chunk -> {
 				tracker.incrementStageCounter(VoicePipelineStage.TTS_SYNTHESIS, "audioChunks", 1);

@@ -7,4 +7,8 @@ public interface TtsPort {
 	Flux<byte[]> streamSynthesize(String text);
 
 	Mono<byte[]> synthesize(String text);
+
+	default Mono<Void> prepare() {
+		return Mono.empty();
+	}
 }

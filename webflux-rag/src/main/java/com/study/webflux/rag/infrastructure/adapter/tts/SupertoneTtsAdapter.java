@@ -1,9 +1,11 @@
 package com.study.webflux.rag.infrastructure.adapter.tts;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -19,6 +21,7 @@ public class SupertoneTtsAdapter implements TtsPort {
 
 	private final WebClient webClient;
 	private final Voice voice;
+	private final Mono<Void> warmupMono;
 
 	public SupertoneTtsAdapter(WebClient.Builder webClientBuilder, SupertoneConfig config, Voice voice) {
 		this.voice = voice;
@@ -26,6 +29,14 @@ public class SupertoneTtsAdapter implements TtsPort {
 			.baseUrl(config.baseUrl())
 			.defaultHeader("x-sup-api-key", config.apiKey())
 			.build();
+		this.warmupMono = this.webClient.method(HttpMethod.HEAD)
+			.uri("/")
+			.retrieve()
+			.toBodilessEntity()
+			.timeout(Duration.ofSeconds(2))
+			.onErrorResume(ex -> Mono.empty())
+			.then()
+			.cache();
 	}
 
 	@Override
@@ -74,5 +85,10 @@ public class SupertoneTtsAdapter implements TtsPort {
 				}
 				return result;
 			});
+	}
+
+	@Override
+	public Mono<Void> prepare() {
+		return warmupMono;
 	}
 }
