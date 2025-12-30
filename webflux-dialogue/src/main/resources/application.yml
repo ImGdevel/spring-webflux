@@ -1,6 +1,6 @@
 spring:
   application:
-    name: webflux-rag
+    name: webflux-dialogue
   data:
     mongodb:
       uri: mongodb://localhost:27017/ragdb
@@ -12,7 +12,7 @@ server:
   port: 8081
 
 rag:
-  voice:
+  dialogue:
     openai:
       api-key: ${OPENAI_API_KEY:}
       base-url: https://api.openai.com/v1

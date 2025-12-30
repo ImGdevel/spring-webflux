@@ -89,7 +89,7 @@
 
 ## ✅ 빌드 검증 완료
 ```bash
-./gradlew :webflux-rag:compileJava
+./gradlew :webflux-dialogue:compileJava
 BUILD SUCCESSFUL
 ```
 
@@ -157,7 +157,7 @@ com.study.webflux.voice/  (rag 네임스페이스 제거)
 ```
 
 **실행 설정:**
-- 포트: 8082 (webflux-rag는 8081)
+- 포트: 8082 (webflux-dialogue는 8081)
 - 독립 실행: `./gradlew :webflux-voice-legacy:bootRun`
 - 메인 클래스: `VoiceLegacyApplication.java`
 
@@ -167,7 +167,7 @@ com.study.webflux.voice/  (rag 네임스페이스 제거)
 3. ✅ 패키지 네임스페이스 변경 (`com.study.webflux.rag.dialogue` → `com.study.webflux.voice`)
 4. ✅ 독립 Application 클래스 생성
 5. ✅ 독립 설정 파일 생성
-6. ✅ webflux-rag에서 voice/ 삭제
+6. ✅ webflux-dialogue에서 voice/ 삭제
 7. ✅ 필요한 공통 클래스 복사 (RagDialogueRequest, RagDialogueProperties, DialogueConstants)
 8. ✅ 빌드 검증 완료
 
@@ -184,7 +184,7 @@ com.study.webflux.voice/  (rag 네임스페이스 제거)
 
 ### 완료된 Clean Architecture 레이어
 ```
-webflux-rag/
+webflux-dialogue/
 ├── domain/                     ✅ 완료
 │   ├── model/                  - Voice, LLM, RAG, Conversation 모델
 │   ├── port/                   - 모든 Port 인터페이스 정의
@@ -317,7 +317,7 @@ void testOpenAiLlmAdapter() {
 
 **테스트 실행 결과:**
 ```bash
-./gradlew :webflux-rag:test
+./gradlew :webflux-dialogue:test
 BUILD SUCCESSFUL ✅
 19 tests completed, 0 failed
 ```

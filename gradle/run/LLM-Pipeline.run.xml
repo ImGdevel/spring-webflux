@@ -1,10 +1,12 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="LLM-Pipeline" type="Application" factoryName="Application">
+    <option name="ALTERNATIVE_JRE_PATH" value="ms-21" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
     <option name="envFilePaths">
       <option value="$PROJECT_DIR$/.env" />
     </option>
     <option name="MAIN_CLASS_NAME" value="com.study.webflux.rag.RagApplication" />
-    <module name="webflux.webflux-rag.main" />
+    <module name="webflux.webflux-dialogue.main" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>

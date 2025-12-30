@@ -15,7 +15,7 @@ export SUPERTONE_API_KEY=your-supertone-key
 
 ### 3. 애플리케이션 실행
 ```bash
-./gradlew :webflux-rag:bootRun
+./gradlew :webflux-dialogue:bootRun
 ```
 
 ### 4. 브라우저에서 테스트 클라이언트 접속

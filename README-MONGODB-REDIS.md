@@ -24,8 +24,8 @@ webflux-redis    (port 6379)
 export OPENAI_API_KEY=your-openai-key
 export SUPERTONE_API_KEY=your-supertone-key
 
-# Run webflux-rag
-./gradlew :webflux-rag:bootRun
+# Run webflux-dialogue
+./gradlew :webflux-dialogue:bootRun
 ```
 
 ## Database Info
